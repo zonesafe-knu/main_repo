@@ -1,49 +1,11 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import './Monitoring.css';
-import logoImg from '../assets/ZONESAFE.png';
+import Header from '../components/common/Header';
 
 const Monitoring = () => {
-  const navigate = useNavigate();
-  const location = useLocation(); // 현재 경로 확인용
-
   return (
     <div className="layout-container">
-      {/* ================= 상단 네비게이션 바 ================= */}
-      <header className="top-navbar">
-        {/* 좌측 로고 */}
-        <div className="nav-logo" onClick={() => navigate('/monitoring')}>
-          <img src={logoImg} alt="ZONESAFE" className="nav-logo-img" />
-          <div className="nav-logo-text">
-            <p>Intelligent safety management</p>
-          </div>
-        </div>
-
-        {/* 중앙 메뉴 */}
-        <div className="nav-menu">
-          <span 
-            className={`nav-item ${location.pathname === '/monitoring' ? 'active' : ''}`}
-            onClick={() => navigate('/monitoring')}
-          >
-            실시간 모니터링
-          </span>
-          <span 
-            className={`nav-item ${location.pathname === '/history' ? 'active' : ''}`}
-            onClick={() => navigate('/history')}
-          >
-            히스토리
-          </span>
-        </div>
-
-        {/* 우측 유저 정보 */}
-        <div className="nav-user">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <span>knu-fac-002</span>
-        </div>
-      </header>
+      <Header />
 
       {/* ================= 메인 3단 레이아웃 ================= */}
       <div className="main-content">

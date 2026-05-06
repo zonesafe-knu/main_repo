@@ -1,0 +1,96 @@
+/* ============================================================
+   ZONESAFE Design Tokens
+   - 모든 색/간격/폰트는 여기서 정의하고, 컴포넌트는 var(--*)로만 참조
+   - 값을 바꾸고 싶으면 이 파일만 수정하면 전체 UI에 반영됨
+   ============================================================ */
+
+:root {
+  /* ---------- 색상: 배경 ---------- */
+  --color-bg:           #FAF7F2;  /* 페이지 전체 크림 배경 */
+  --color-surface:      #FFFFFF;  /* 카드/입력창 흰색 */
+  --color-surface-alt:  #F5F0E8;  /* 헤더, 사이드바 연베이지 */
+  --color-overlay-dark: rgba(0, 0, 0, 0.5);  /* 영상 위 오버레이 */
+
+  /* ---------- 색상: 포인트(브랜드) ---------- */
+  --color-accent:        #8B7355;  /* 로고, 버튼, 활성 탭 */
+  --color-accent-hover:  #6F5B43;  /* 호버 시 진해짐 */
+  --color-accent-light:  #C4B49A;  /* 비활성/보조 사용 */
+
+  /* ---------- 색상: 텍스트 ---------- */
+  --color-text-primary:    #2A2620;  /* 제목, 본문 */
+  --color-text-secondary:  #6B645A;  /* 설명, 라벨 */
+  --color-text-muted:      #A39C90;  /* 플레이스홀더, 보조 정보 */
+  --color-text-inverse:    #FFFFFF;  /* 어두운 배경 위 흰 글자 */
+
+  /* ---------- 색상: 상태(알람/뱃지) ---------- */
+  --color-danger:       #E03E3E;
+  --color-danger-bg:    #FCE8E8;  /* DANGER 배지 배경 */
+  --color-warn:         #E8932A;
+  --color-warn-bg:      #FCEFD8;
+  --color-info:         #7B7B7B;
+  --color-info-bg:      #ECECEC;
+  --color-safe:         #4CAF50;
+  --color-safe-bg:      #E4F3E5;
+
+  /* ---------- 색상: 테두리/구분선 ---------- */
+  --color-border:        #E5DFD2;  /* 카드/입력창 테두리 */
+  --color-border-strong: #C4B49A;  /* 강조 테두리 */
+  --color-divider:       #EFEAE0;  /* 헤더 하단선 */
+
+  /* ---------- 색상: 영상 오버레이 (ROI/bbox 전용) ---------- */
+  --color-roi:          #FF1744;  /* ROI 다각형 빨강 */
+  --color-bbox-person:  #FF3B3B;  /* 사람 탐지 박스 */
+  --color-bbox-forklift: #FFA726; /* 지게차 탐지 박스 */
+
+  /* ---------- 폰트 패밀리 ---------- */
+  --font-sans:    'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+  --font-display: 'Lora', Georgia, serif;  /* 로고/큰 영문 헤드라인 */
+  --font-mono:    'JetBrains Mono', Consolas, monospace;  /* 좌표/시각 */
+
+  /* ---------- 폰트 사이즈 ---------- */
+  --font-size-xs:   12px;
+  --font-size-sm:   14px;
+  --font-size-base: 16px;
+  --font-size-lg:   18px;
+  --font-size-xl:   24px;
+  --font-size-2xl:  32px;
+  --font-size-3xl:  40px;
+
+  /* ---------- 폰트 굵기 ---------- */
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:    700;
+
+  /* ---------- 간격 (padding/margin/gap) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ---------- 모서리 둥글기 ---------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;  /* 동그란 배지 */
+
+  /* ---------- 그림자 ---------- */
+  --shadow-sm:  0 1px 2px rgba(43, 38, 32, 0.05);
+  --shadow-md:  0 4px 8px rgba(43, 38, 32, 0.08);
+  --shadow-lg:  0 8px 24px rgba(43, 38, 32, 0.12);
+
+  /* ---------- 레이아웃 폭/높이 ---------- */
+  --header-height:        72px;
+  --sidebar-width:        260px;   /* 모니터링 좌측 카메라 목록 */
+  --roi-panel-width:      320px;   /* 모니터링 우측 ROI 패널 */
+  --content-max-width:    1440px;
+
+  /* ---------- 트랜지션 ---------- */
+  --transition-fast:   120ms ease-out;
+  --transition-normal: 200ms ease-out;
+}

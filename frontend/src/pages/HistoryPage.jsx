@@ -1,56 +1,21 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import logoImg from '../assets/ZONESAFE.png';
-import './HistoryPage.css'; // 새로 만들 CSS 파일 연결
+import './HistoryPage.css';
+import Header from '../components/common/Header';
 
 const HistoryPage = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
   // 테스트용 알람 데이터
   const mockAlarms = [
     { id: 1, time: '13:21:31', camera: 'cam1', severity: 'danger', content: '작업자-지게차 근접', isPlaying: true },
     { id: 2, time: '13:21:31', camera: 'cam1', severity: 'warning', content: '작업자-지게차 근접', isPlaying: false },
     { id: 3, time: '13:21:31', camera: 'cam1', severity: 'info', content: '작업자-지게차 근접', isPlaying: false },
     { id: 4, time: '13:21:31', camera: 'cam1', severity: 'danger', content: '작업자-지게차 근접', isPlaying: false },
-    { id: 5, time: '13:21:31', camera: 'cam1', severity: 'danger', content: '작업자-지게차 근접', is : false },
+    { id: 5, time: '13:21:31', camera: 'cam1', severity: 'danger', content: '작업자-지게차 근접', isPlaying: false },
     { id: 6, time: '13:21:31', camera: 'cam1', severity: 'danger', content: '작업자-지게차 근접', isPlaying: false },
   ];
 
   return (
     <div className="layout-container">
-      {/* ================= 상단 네비게이션 바 (모니터링 페이지와 동일) ================= */}
-      <header className="top-navbar">
-        <div className="nav-logo" onClick={() => navigate('/monitoring')}>
-          <img src={logoImg} alt="ZONESAFE" className="nav-logo-img" />
-          <div className="nav-logo-text">
-            <p>Intelligent safety management</p>
-          </div>
-        </div>
-
-        <div className="nav-menu">
-          <span 
-            className={`nav-item ${location.pathname === '/monitoring' ? 'active' : ''}`}
-            onClick={() => navigate('/monitoring')}
-          >
-            실시간 모니터링
-          </span>
-          <span 
-            className={`nav-item ${location.pathname === '/history' ? 'active' : ''}`}
-            onClick={() => navigate('/history')}
-          >
-            히스토리
-          </span>
-        </div>
-
-        <div className="nav-user">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <span>knu-fac-002</span>
-        </div>
-      </header>
+      <Header />
 
       {/* ================= 메인 콘텐츠 영역 ================= */}
       <div className="history-main">

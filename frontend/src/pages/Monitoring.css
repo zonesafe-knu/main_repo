@@ -10,57 +10,6 @@
   overflow: hidden;
 }
 
-/* ================= 상단 네비게이션 ================= */
-.top-navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 40px;
-  background-color: #F4F2EC;
-  border-bottom: 1px solid #D5D0C5;
-  height: 80px;
-  box-sizing: border-box;
-}
-
-.nav-logo {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  cursor: pointer;
-}
-
-.nav-logo-img { height: 35px; }
-.nav-logo-text h2 { margin: 0; font-size: 1.5rem; color: #5D4037; letter-spacing: 1px; }
-.nav-logo-text p { margin: 0; font-size: 0.8rem; color: #888; }
-
-.nav-menu {
-  display: flex;
-  gap: 50px;
-}
-
-.nav-item {
-  font-size: 1.1rem;
-  color: #666;
-  cursor: pointer;
-  padding-bottom: 5px;
-  font-weight: 500;
-}
-
-.nav-item.active {
-  color: #8C6A3E; /* 선택된 메뉴 브라운 색상 */
-  border-bottom: 2px solid #8C6A3E;
-}
-
-.nav-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #888;
-  font-size: 0.95rem;
-}
-
-.nav-user svg { width: 18px; height: 18px; }
-
 /* ================= 메인 3단 레이아웃 ================= */
 .main-content {
   display: flex;

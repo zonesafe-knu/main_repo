@@ -48,14 +48,89 @@
 }
 
 .nav-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  position: relative;
   color: #888;
   font-size: 0.95rem;
 }
 
-.nav-user svg {
+.nav-user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.nav-user-trigger:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.nav-user-trigger svg {
   width: 18px;
   height: 18px;
+}
+
+.user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background-color: #FFFFFF;
+  border: 1px solid #E5E0D6;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 8px;
+  z-index: 100;
+}
+
+.user-menu-info {
+  padding: 8px 10px;
+}
+
+.user-menu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 0.9rem;
+}
+
+.user-menu-row + .user-menu-row {
+  border-top: 1px solid #F1ECE2;
+}
+
+.user-menu-label {
+  color: #999;
+}
+
+.user-menu-value {
+  color: #333;
+  font-weight: 500;
+  word-break: break-all;
+  text-align: right;
+}
+
+.user-menu-logout {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background-color: #F8F5EE;
+  color: #8C6A3E;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+.user-menu-logout:hover {
+  background-color: #ECE4D2;
 }

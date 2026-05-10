@@ -50,6 +50,85 @@
   background-size: 10px auto;
 }
 
+/* ===== DatePicker (베이지 톤 오버라이드) ===== */
+.date-picker-wrapper .react-datepicker-wrapper {
+  width: 100%;
+}
+
+.date-picker-input {
+  width: 100%;
+  padding: 10px 15px;
+  background-color: #EFECE3;
+  border: 1px solid #D5D0C5;
+  border-radius: 2px;
+  font-size: 0.95rem;
+  color: #333;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.date-picker-input:focus {
+  border-color: #8C6A3E;
+}
+
+.react-datepicker {
+  font-family: inherit;
+  border: 1px solid #D5D0C5;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.react-datepicker__header {
+  background-color: #EFECE3;
+  border-bottom: 1px solid #D5D0C5;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  color: #333;
+  font-weight: 500;
+}
+
+.react-datepicker__day:hover {
+  background-color: #ECE4D2;
+  border-radius: 4px;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: #8C6A3E;
+  color: #FFFFFF;
+  border-radius: 4px;
+}
+
+.react-datepicker__day--selected:hover,
+.react-datepicker__day--keyboard-selected:hover {
+  background-color: #7A5C36;
+}
+
+.react-datepicker__day--today {
+  font-weight: 700;
+  color: #8C6A3E;
+}
+
+.react-datepicker__day--today.react-datepicker__day--selected {
+  color: #FFFFFF;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: #8C6A3E;
+}
+
+.react-datepicker__navigation:hover *::before {
+  border-color: #7A5C36;
+}
+
+.react-datepicker__triangle {
+  display: none;
+}
+
 /* 하단 좌우 분할 영역 */
 .history-content-split {
   display: flex;
@@ -74,13 +153,26 @@
   margin-bottom: 15px;
 }
 
-.badge-outline.danger {
-  border: 1px solid #E74C3C;
-  color: #E74C3C;
+.badge-outline {
   padding: 4px 10px;
   border-radius: 2px;
   font-size: 0.85rem;
   font-weight: 500;
+}
+
+.badge-outline.danger {
+  border: 1px solid #E74C3C;
+  color: #E74C3C;
+}
+
+.badge-outline.warning {
+  border: 1px solid #E89C2C;
+  color: #E89C2C;
+}
+
+.badge-outline.info {
+  border: 1px solid #4A90D9;
+  color: #4A90D9;
 }
 
 .playback-time {
@@ -96,9 +188,54 @@
   justify-content: center;
   margin-bottom: 15px;
   min-height: 300px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
 }
 
-.mock-video-text { color: #888; font-size: 1.2rem; }
+.video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #000;
+}
+
+.video-overlay-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.55);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s, background-color 0.2s;
+  padding: 0;
+}
+
+.video-overlay-btn svg {
+  width: 28px;
+  height: 28px;
+}
+
+.video-overlay-btn:hover {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+/* 재생 중일 때는 평소엔 숨겼다가 영상 hover 시에만 보이게 */
+.video-overlay-btn.playing {
+  opacity: 0;
+}
+
+.video-screen:hover .video-overlay-btn.playing {
+  opacity: 1;
+}
 
 .video-controls {
   display: flex;
@@ -111,6 +248,7 @@
   background-color: #D5D0C5;
   border-radius: 3px;
   margin-bottom: 5px;
+  cursor: pointer;
 }
 
 .progress-fill {
@@ -186,8 +324,24 @@
   border-bottom: 1px solid #EFECE3;
 }
 
+.alarm-table tr.alarm-row {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.alarm-table tr.alarm-row:hover td {
+  background-color: #FAF7F0;
+}
+
 .alarm-table tr.playing-row td {
   font-weight: 600;
+  background-color: #F4EEDF;
+}
+
+.alarm-table .empty-row {
+  padding: 30px 12px;
+  color: #999;
+  font-size: 0.9rem;
 }
 
 .play-icon {

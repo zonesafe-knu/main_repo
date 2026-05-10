@@ -10,10 +10,10 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // 3. 코드가 입력되었을 때 모니터링 페이지로 넘어가도록 처리
-    if (companyCode.trim() !== "") {
-      console.log('입력된 회사 코드:', companyCode);
-      navigate('/monitoring'); // '/monitoring' 경로로 이동
+    const trimmed = companyCode.trim();
+    if (trimmed !== "") {
+      localStorage.setItem('companyCode', trimmed);
+      navigate('/monitoring');
     } else {
       alert("회사 코드를 입력해주세요.");
     }

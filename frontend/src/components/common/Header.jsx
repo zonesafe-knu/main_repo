@@ -2,9 +2,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import logoImg from '../../assets/ZONESAFE.png';
 import './Header.css';
 
-export default function Header({ companyCode = 'knu-fac-002' }) {
+export default function Header({ companyCode }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const displayCode = companyCode ?? localStorage.getItem('companyCode') ?? '';
 
   return (
     <header className="top-navbar">
@@ -33,7 +34,7 @@ export default function Header({ companyCode = 'knu-fac-002' }) {
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
-        <span>{companyCode}</span>
+        <span>{displayCode}</span>
       </div>
     </header>
   );

@@ -1,22 +1,38 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. 라우터 이동을 위한 훅 임포트
+import { useNavigate } from 'react-router-dom';
 import './Login.css';
-import logoImg from '../assets/ZONESAFE.png'; 
+import logoImg from '../assets/ZONESAFE.png';
+import { verifyCompanyCode, AuthError } from '../api/auth';
+import { saveSession } from '../auth/session';
 
 const Login = () => {
   const [companyCode, setCompanyCode] = useState('');
-  const navigate = useNavigate(); // 2. navigate 객체 생성
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    const trimmed = companyCode.trim();
-    if (trimmed !== "") {
-      localStorage.setItem('companyCode', trimmed);
+    if (isSubmitting) return;
+
+    setErrorMsg('');
+    setIsSubmitting(true);
+    try {
+      const company = await verifyCompanyCode(companyCode);
+      saveSession(company);
       navigate('/monitoring');
-    } else {
-      alert("회사 코드를 입력해주세요.");
+    } catch (err) {
+      const message = err instanceof AuthError
+        ? err.message
+        : '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      setErrorMsg(message);
+      setIsSubmitting(false);
     }
+  };
+
+  const handleChange = (e) => {
+    setCompanyCode(e.target.value);
+    if (errorMsg) setErrorMsg('');
   };
 
   return (
@@ -85,20 +101,33 @@ const Login = () => {
           <h2>회사 코드 입력</h2>
           <p className="subtitle">회사 식별 코드를 입력하세요.</p>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <div className="input-group">
               <label htmlFor="companyCode">company code</label>
               <input
                 type="text"
                 id="companyCode"
-                placeholder="ex) knu-fac-002"
+                placeholder="ex) knu22"
                 value={companyCode}
-                onChange={(e) => setCompanyCode(e.target.value)}
-                required
+                onChange={handleChange}
+                disabled={isSubmitting}
+                autoFocus
+                autoComplete="off"
+                aria-invalid={errorMsg ? 'true' : 'false'}
+                aria-describedby={errorMsg ? 'companyCode-error' : undefined}
               />
             </div>
-            <button type="submit" className="submit-btn">
-              코드 확인 &rarr;
+            {errorMsg && (
+              <p id="companyCode-error" className="form-error" role="alert">
+                {errorMsg}
+              </p>
+            )}
+            <button
+              type="submit"
+              className="submit-btn"
+              disabled={isSubmitting || companyCode.trim() === ''}
+            >
+              {isSubmitting ? '확인 중...' : <>코드 확인 &rarr;</>}
             </button>
           </form>
         </div>

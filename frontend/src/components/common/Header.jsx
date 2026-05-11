@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logoImg from '../../assets/ZONESAFE.png';
+import { getSession, clearSession } from '../../auth/session';
 import './Header.css';
 
 export default function Header({ companyCode }) {
@@ -9,8 +10,9 @@ export default function Header({ companyCode }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
 
-  const displayCode = companyCode ?? localStorage.getItem('companyCode') ?? '';
-  const displayName = localStorage.getItem('companyName') ?? displayCode;
+  const session = getSession();
+  const displayCode = companyCode ?? session?.companyCode ?? '';
+  const displayName = session?.companyName || displayCode;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -23,8 +25,7 @@ export default function Header({ companyCode }) {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('companyCode');
-    localStorage.removeItem('companyName');
+    clearSession();
     setIsMenuOpen(false);
     navigate('/');
   };

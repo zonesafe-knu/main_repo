@@ -181,6 +181,24 @@
   background-color: #826840;
 }
 
+.submit-btn:disabled {
+  background-color: #C5B59A;
+  cursor: not-allowed;
+}
+
+.input-group input:disabled {
+  background-color: #EFEEEC;
+  cursor: not-allowed;
+  color: #888;
+}
+
+.form-error {
+  color: #C0392B;
+  font-size: 0.85rem;
+  margin: -0.75rem 0 1.25rem 0;
+  line-height: 1.4;
+}
+
 /* ==================== 반응형 처리 ==================== */
 @media screen and (max-width: 1024px) {
   .login-container {

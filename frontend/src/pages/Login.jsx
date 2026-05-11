@@ -33,7 +33,7 @@ const Login = () => {
         <div className="hero-section">
           <h1>
             실시간 영상 기반<br />
-            <span className="highlight">작업자 안전</span> 관리 솔루션
+            <span className="highlight">작업자 안전 관리</span> 솔루션
           </h1>
         </div>
 

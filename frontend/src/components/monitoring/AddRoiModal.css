@@ -1,0 +1,56 @@
+/*
+ * 공통 모달 스타일(.modal-backdrop, .modal-card, .modal-header, .modal-body,
+ * .modal-footer, .form-group, .form-input, .form-primary-btn 등)은
+ * AddCameraModal.css에서 정의됨 (Monitoring.jsx에서 import되어 항상 로드됨).
+ * 여기엔 ROI 모달 전용 스타일만 정의.
+ */
+
+.roi-target-camera {
+  margin: 0;
+  padding: 10px 14px;
+  background: #F4F2EC;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.roi-target-camera strong {
+  color: #333;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.form-input.has-error {
+  border-color: #C0392B;
+  background: #FDEEEC;
+}
+
+.form-error {
+  margin: 4px 0 0 0;
+  font-size: 0.78rem;
+  color: #C0392B;
+}
+
+.roi-coord-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #FAFAF7;
+  border: 1px dashed #D5D0C5;
+  border-radius: 4px;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.roi-coord-icon {
+  font-size: 1.4rem;
+  color: #C4B49A;
+  flex-shrink: 0;
+}
+
+.roi-coord-note {
+  font-size: 0.75rem;
+  color: #AAA;
+  margin-top: 2px;
+}

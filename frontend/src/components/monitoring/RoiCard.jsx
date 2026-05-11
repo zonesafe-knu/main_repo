@@ -11,9 +11,6 @@ export default function RoiCard({ roi, onEdit, onDelete }) {
     <div className="roi-card">
       <div className="roi-card-header">
         <span>{roi.name}</span>
-        <span className={`badge ${roi.status}`}>
-          {roi.status.toUpperCase()}
-        </span>
       </div>
       <div className="roi-card-body">
         <div className="coord-table">

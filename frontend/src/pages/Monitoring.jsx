@@ -5,6 +5,7 @@ import CameraSidebar from '../components/monitoring/CameraSidebar';
 import LiveVideoPanel from '../components/monitoring/LiveVideoPanel';
 import RoiSidebar from '../components/monitoring/RoiSidebar';
 import AddCameraModal from '../components/monitoring/AddCameraModal';
+import AddRoiModal from '../components/monitoring/AddRoiModal';
 
 // TODO: 백엔드 연결 시 src/api/cameras.js, src/api/rois.js로 이동
 const initialSites = [
@@ -28,14 +29,14 @@ const initialSites = [
 const initialRois = [
   {
     id: 1,
+    cameraId: 1,
     name: '#1 지게차 진입 구역',
-    status: 'danger',
     coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
   },
   {
     id: 2,
+    cameraId: 1,
     name: '#2 로봇 접근 구역',
-    status: 'safe',
     coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
   },
 ];
@@ -54,6 +55,10 @@ export default function Monitoring() {
   const [rois, setRois] = useState(initialRois);
   const [selectedCameraId, setSelectedCameraId] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddRoiModalOpen, setIsAddRoiModalOpen] = useState(false);
+
+  // 현재 선택된 카메라의 ROI만 표시
+  const visibleRois = rois.filter((r) => r.cameraId === selectedCameraId);
 
   const selectedCamera = sites
     .flatMap((s) => s.cameras)
@@ -117,6 +122,26 @@ export default function Monitoring() {
     setRois((prev) => prev.filter((r) => r.id !== roiId));
   };
 
+  const handleOpenAddRoiModal = () => {
+    if (!selectedCameraId) {
+      alert('카메라를 먼저 선택해주세요');
+      return;
+    }
+    setIsAddRoiModalOpen(true);
+  };
+
+  const handleAddRoi = ({ name }) => {
+    const maxId = rois.reduce((max, r) => Math.max(max, r.id), 0);
+    const newRoi = {
+      id: maxId + 1,
+      cameraId: selectedCameraId,
+      name,
+      // 임시 좌표 — 추후 canvas 편집기로 교체
+      coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
+    };
+    setRois((prev) => [...prev, newRoi]);
+  };
+
   return (
     <div className="layout-container">
       <Header />
@@ -135,8 +160,8 @@ export default function Monitoring() {
           status={mockStatus}
         />
         <RoiSidebar
-          rois={rois}
-          onAddRoi={() => alert('ROI 추가는 추후 구현')}
+          rois={visibleRois}
+          onAddRoi={handleOpenAddRoiModal}
           onEditRoi={(id) => alert(`ROI ${id} 수정`)}
           onDeleteRoi={handleDeleteRoi}
         />
@@ -148,6 +173,14 @@ export default function Monitoring() {
           onAddCamera={handleAddCamera}
           onAddSite={handleAddSite}
           onClose={handleCloseAddModal}
+        />
+      )}
+
+      {isAddRoiModalOpen && (
+        <AddRoiModal
+          cameraName={selectedCamera?.name ?? ''}
+          onAddRoi={handleAddRoi}
+          onClose={() => setIsAddRoiModalOpen(false)}
         />
       )}
     </div>

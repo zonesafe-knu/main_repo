@@ -25,17 +25,6 @@
   margin-bottom: 8px;
   font-weight: bold;
 }
-.camera-item {
-  padding: 12px 20px;
-  font-size: 0.9rem;
-  display: flex;
-  justify-content: space-between;
-  cursor: pointer;
-  color: #333;
-}
-.camera-item:hover { background-color: #E3DFD5; }
-.camera-item.active { background-color: #DFD8CB; font-weight: bold; }
-.more-btn { color: #999; }
 
 .camera-list-empty {
   padding: 30px 20px;

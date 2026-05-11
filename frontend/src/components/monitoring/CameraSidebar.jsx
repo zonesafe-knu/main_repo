@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import CameraItem from './CameraItem';
 import './CameraSidebar.css';
 
 export default function CameraSidebar({
@@ -6,6 +7,8 @@ export default function CameraSidebar({
   selectedCameraId,
   onSelectCamera,
   onAddCamera,
+  onRenameCamera,
+  onDeleteCamera,
 }) {
   const [searchText, setSearchText] = useState('');
 
@@ -21,6 +24,9 @@ export default function CameraSidebar({
     .filter((site) => site.cameras.length > 0);
 
   const hasResults = filteredSites.length > 0;
+
+  // 모든 카메라 이름 (중복 검증용) — 필터링 무관하게 전체 기준
+  const allCameraNames = sites.flatMap((s) => s.cameras.map((c) => c.name));
 
   return (
     <aside className="left-sidebar">
@@ -46,15 +52,15 @@ export default function CameraSidebar({
                 {site.name}
               </div>
               {site.cameras.map((cam) => (
-                <div
+                <CameraItem
                   key={cam.id}
-                  className={`camera-item ${
-                    cam.id === selectedCameraId ? 'active' : ''
-                  }`}
-                  onClick={() => onSelectCamera?.(cam.id)}
-                >
-                  {cam.name} <span className="more-btn">···</span>
-                </div>
+                  camera={cam}
+                  isSelected={cam.id === selectedCameraId}
+                  onSelect={onSelectCamera}
+                  onRename={onRenameCamera}
+                  onDelete={onDeleteCamera}
+                  allCameraNames={allCameraNames}
+                />
               ))}
             </div>
           ))

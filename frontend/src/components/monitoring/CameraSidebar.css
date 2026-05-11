@@ -37,6 +37,13 @@
 .camera-item.active { background-color: #DFD8CB; font-weight: bold; }
 .more-btn { color: #999; }
 
+.camera-list-empty {
+  padding: 30px 20px;
+  color: #999;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 .sidebar-footer { padding: 15px; border-top: 1px solid #D5D0C5; }
 .add-camera-btn {
   width: 100%;

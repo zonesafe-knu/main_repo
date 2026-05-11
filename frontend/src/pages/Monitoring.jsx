@@ -25,7 +25,7 @@ const initialSites = [
   },
 ];
 
-const mockRois = [
+const initialRois = [
   {
     id: 1,
     name: '#1 지게차 진입 구역',
@@ -51,6 +51,7 @@ const mockStatus = {
 
 export default function Monitoring() {
   const [sites, setSites] = useState(initialSites);
+  const [rois, setRois] = useState(initialRois);
   const [selectedCameraId, setSelectedCameraId] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -112,6 +113,10 @@ export default function Monitoring() {
     setSelectedCameraId(newCamera.id);
   };
 
+  const handleDeleteRoi = (roiId) => {
+    setRois((prev) => prev.filter((r) => r.id !== roiId));
+  };
+
   return (
     <div className="layout-container">
       <Header />
@@ -130,10 +135,10 @@ export default function Monitoring() {
           status={mockStatus}
         />
         <RoiSidebar
-          rois={mockRois}
+          rois={rois}
           onAddRoi={() => alert('ROI 추가는 추후 구현')}
           onEditRoi={(id) => alert(`ROI ${id} 수정`)}
-          onDeleteRoi={(id) => alert(`ROI ${id} 삭제`)}
+          onDeleteRoi={handleDeleteRoi}
         />
       </div>
 

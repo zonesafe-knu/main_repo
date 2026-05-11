@@ -1,0 +1,58 @@
+.roi-card {
+  border: 1px solid #D5D0C5;
+  background-color: #F4F2EC;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.roi-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.badge {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+.badge.danger {
+  background-color: #FADBD8;
+  color: #C0392B;
+  border: 1px solid #E6B0AA;
+}
+.badge.safe {
+  background-color: #D5F5E3;
+  color: #27AE60;
+  border: 1px solid #A9DFBF;
+}
+
+.coord-table { font-size: 0.75rem; color: #666; margin-bottom: 10px; }
+.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 5px;
+}
+.grid-2x2 span {
+  border: 1px solid #D5D0C5;
+  text-align: center;
+  padding: 4px 0;
+  background-color: #FFF;
+}
+
+.roi-actions { display: flex; gap: 5px; }
+.roi-actions button {
+  flex: 1;
+  background: #FFF;
+  border: 1px solid #D5D0C5;
+  padding: 6px 0;
+  cursor: pointer;
+  color: #555;
+  border-radius: 2px;
+}
+.roi-actions button:hover { background-color: #EFECE3; }

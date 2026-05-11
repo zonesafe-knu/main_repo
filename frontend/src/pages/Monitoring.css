@@ -1,98 +1,17 @@
-/* 전체 레이아웃 배경 및 폰트 */
+/* 페이지 레이아웃만 — 컴포넌트 스타일은 components/monitoring/*.css */
 .layout-container {
   display: flex;
   flex-direction: column;
   width: 100vw;
   height: 100vh;
-  background-color: #F4F2EC; /* 시안의 베이지 배경색 */
+  background-color: #F4F2EC;
   color: #333;
   font-family: 'Noto Sans KR', sans-serif;
   overflow: hidden;
 }
 
-/* ================= 메인 3단 레이아웃 ================= */
 .main-content {
   display: flex;
   flex: 1;
   height: calc(100vh - 80px);
 }
-
-/* 1. 좌측 사이드바 (카메라 목록) */
-.left-sidebar {
-  width: 280px;
-  border-right: 1px solid #D5D0C5;
-  display: flex;
-  flex-direction: column;
-  background-color: #EFECE3;
-}
-
-.sidebar-header { padding: 20px; border-bottom: 1px solid #D5D0C5; }
-.sidebar-header h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #555; }
-.search-input { width: 100%; padding: 8px; border: 1px solid #D5D0C5; background-color: #E3DFD5; border-radius: 4px; outline: none; }
-
-.camera-list { flex: 1; overflow-y: auto; padding: 20px 0; }
-.location-group { font-size: 0.8rem; color: #666; padding: 0 20px; margin-bottom: 8px; font-weight: bold; }
-.camera-item { padding: 12px 20px; font-size: 0.9rem; display: flex; justify-content: space-between; cursor: pointer; color: #333; }
-.camera-item:hover { background-color: #E3DFD5; }
-.camera-item.active { background-color: #DFD8CB; font-weight: bold; }
-.more-btn { color: #999; }
-
-.sidebar-footer { padding: 15px; border-top: 1px solid #D5D0C5; }
-.add-camera-btn { width: 100%; padding: 10px; background: none; border: 1px solid #9C7E4F; color: #333; border-radius: 20px; cursor: pointer; }
-
-/* 2. 중앙 영역 (영상) */
-.center-video-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: #F4F2EC;
-}
-
-.video-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #D5D0C5; }
-.video-header h3 { margin: 0; font-size: 1rem; color: #333; }
-.fullscreen-btn { background: none; border: 1px solid #CCC; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-
-.video-player-placeholder {
-  flex: 1;
-  background-color: #1A1A1A; /* 영상 영역은 어둡게 임시 처리 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mock-video-text { color: #666; font-size: 1.2rem; }
-
-.video-status-bar { display: flex; background-color: #EFECE3; border-top: 1px solid #D5D0C5; padding: 15px 0; }
-.status-item { flex: 1; text-align: center; border-right: 1px solid #D5D0C5; display: flex; flex-direction: column; justify-content: center;}
-.status-item:last-child { border-right: none; }
-.status-item .label { font-size: 0.75rem; color: #666; margin-bottom: 5px; }
-.status-item .value { font-size: 0.85rem; color: #333; font-weight: 500; line-height: 1.3; }
-
-/* 3. 우측 사이드바 (ROI 설정) */
-.right-sidebar {
-  width: 320px;
-  border-left: 1px solid #D5D0C5;
-  background-color: #EFECE3;
-  display: flex;
-  flex-direction: column;
-}
-
-.roi-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #D5D0C5; }
-.roi-header h4 { margin: 0; font-size: 0.95rem; color: #333; }
-.add-roi-btn { background-color: #111; color: white; border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; }
-
-.roi-list { padding: 20px; flex: 1; overflow-y: auto; }
-.roi-card { border: 1px solid #D5D0C5; background-color: #F4F2EC; border-radius: 6px; padding: 15px; margin-bottom: 15px; }
-
-.roi-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 0.9rem; font-weight: 500;}
-.badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 12px; }
-.badge.danger { background-color: #FADBD8; color: #C0392B; border: 1px solid #E6B0AA; }
-.badge.safe { background-color: #D5F5E3; color: #27AE60; border: 1px solid #A9DFBF; }
-
-.coord-table { font-size: 0.75rem; color: #666; margin-bottom: 10px;}
-.grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px; }
-.grid-2x2 span { border: 1px solid #D5D0C5; text-align: center; padding: 4px 0; background-color: #FFF; }
-
-.roi-actions { display: flex; gap: 5px; }
-.roi-actions button { flex: 1; background: #FFF; border: 1px solid #D5D0C5; padding: 6px 0; cursor: pointer; color: #555; border-radius: 2px;}
-.roi-actions button:hover { background-color: #EFECE3; }

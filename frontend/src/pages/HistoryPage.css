@@ -180,6 +180,130 @@
   font-size: 0.95rem;
 }
 
+.playback-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playback-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== 상태 배지 ===== */
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-badge.new {
+  background-color: #FBEEEC;
+  color: #C0392B;
+}
+
+.status-badge.ack {
+  background-color: #FDF4E5;
+  color: #B47020;
+}
+
+.status-badge.resolved {
+  background-color: #EFEEEC;
+  color: #777;
+}
+
+/* ===== 액션 버튼 ===== */
+.action-btn {
+  padding: 6px 14px;
+  background-color: #FFFFFF;
+  border: 1px solid #CCC;
+  color: #555;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.action-btn.primary {
+  background-color: #8C6A3E;
+  color: #FFFFFF;
+  border-color: #8C6A3E;
+}
+
+.action-btn:hover { background-color: #F4F2EC; }
+.action-btn.primary:hover { background-color: #7A5C36; }
+
+.action-btn:disabled {
+  color: #BBB;
+  border-color: #E0DCD2;
+  background-color: #FFFFFF;
+  cursor: not-allowed;
+}
+
+.action-btn.primary:disabled {
+  background-color: #D5C9B3;
+  border-color: #D5C9B3;
+  color: #FFFFFF;
+}
+
+.row-action-btn {
+  padding: 3px 8px;
+  background-color: #FFFFFF;
+  border: 1px solid #CCC;
+  color: #555;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  margin-right: 4px;
+}
+
+.row-action-btn:last-child { margin-right: 0; }
+
+.row-action-btn.primary {
+  background-color: #8C6A3E;
+  color: #FFFFFF;
+  border-color: #8C6A3E;
+}
+
+.row-action-btn:hover { background-color: #F4F2EC; }
+.row-action-btn.primary:hover { background-color: #7A5C36; }
+
+.row-action-btn:disabled {
+  color: #CCC;
+  border-color: #E5E1D8;
+  background-color: #FFFFFF;
+  cursor: not-allowed;
+}
+
+.row-action-btn.primary:disabled {
+  background-color: #D5C9B3;
+  border-color: #D5C9B3;
+  color: #FFFFFF;
+}
+
+/* ===== 체크박스 / 액션 컬럼 너비 ===== */
+.alarm-table th.col-check,
+.alarm-table td.col-check {
+  width: 32px;
+  text-align: center;
+}
+
+.alarm-table th.col-check input,
+.alarm-table td.col-check input {
+  cursor: pointer;
+}
+
+.alarm-table th.col-check input:disabled,
+.alarm-table td.col-check input:disabled {
+  cursor: not-allowed;
+}
+
+.alarm-table td.col-actions {
+  white-space: nowrap;
+}
+
 .video-screen {
   flex: 1;
   background-color: #1A1A1A;
@@ -291,10 +415,44 @@
   padding: 20px;
 }
 
+.alarm-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
 .alarm-list-header h4 {
-  margin: 0 0 15px 0;
+  margin: 0;
   color: #666;
   font-weight: 500;
+}
+
+.alarm-list-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.alarm-list-count {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.bulk-ack-btn {
+  padding: 6px 14px;
+  background-color: #8C6A3E;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 2px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.bulk-ack-btn:hover { background-color: #7A5C36; }
+.bulk-ack-btn:disabled {
+  background-color: #C5B59A;
+  cursor: not-allowed;
 }
 
 .table-container {
@@ -368,4 +526,57 @@
 .page-num.active {
   color: #333;
   font-weight: bold;
+}
+
+.page-arrow.disabled {
+  color: #D5D0C5;
+  cursor: not-allowed;
+}
+
+/* ===== 영상 패널 비어있는 상태 ===== */
+.playback-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 0.95rem;
+  background-color: #F4F2EC;
+}
+
+/* ===== 테이블 로딩/에러 상태 ===== */
+.alarm-table .empty-row.error {
+  color: #C0392B;
+}
+
+.retry-btn {
+  margin-left: 12px;
+  padding: 4px 12px;
+  background-color: #FFFFFF;
+  border: 1px solid #C0392B;
+  color: #C0392B;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.retry-btn:hover {
+  background-color: #FBEEEC;
+}
+
+/* ===== DatePicker 범위 선택 스타일 ===== */
+.react-datepicker__day--in-range,
+.react-datepicker__day--in-selecting-range {
+  background-color: #ECE4D2;
+  color: #333;
+  border-radius: 0;
+}
+
+.react-datepicker__day--range-start,
+.react-datepicker__day--range-end,
+.react-datepicker__day--selecting-range-start,
+.react-datepicker__day--selecting-range-end {
+  background-color: #8C6A3E;
+  color: #FFFFFF;
+  border-radius: 4px;
 }

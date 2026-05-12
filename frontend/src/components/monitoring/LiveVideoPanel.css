@@ -64,6 +64,33 @@
   font-family: inherit;
 }
 
+/* ===== 그리기 모드 (꼭짓점 클릭 받기) ===== */
+.roi-overlay.interactive {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.roi-drawing-line {
+  fill: none;
+  stroke: #FFD700;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+  stroke-linejoin: round;
+}
+
+.roi-drawing-polygon {
+  fill: rgba(255, 215, 0, 0.2);
+  stroke: #FFD700;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.roi-drawing-vertex {
+  fill: #FFD700;
+  stroke: #FFFFFF;
+  stroke-width: 3;
+}
+
 .video-status-bar {
   display: flex;
   background-color: #EFECE3;

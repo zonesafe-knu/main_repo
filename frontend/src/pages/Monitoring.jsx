@@ -57,6 +57,8 @@ export default function Monitoring() {
   const [selectedCameraId, setSelectedCameraId] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddRoiModalOpen, setIsAddRoiModalOpen] = useState(false);
+  // ROI 그리는 중인 꼭짓점들. null = 그리기 모드 아님.
+  const [drawingVertices, setDrawingVertices] = useState(null);
 
   // 현재 선택된 카메라의 ROI만 표시
   const visibleRois = rois.filter((r) => r.cameraId === selectedCameraId);
@@ -128,19 +130,37 @@ export default function Monitoring() {
       alert('카메라를 먼저 선택해주세요');
       return;
     }
+    setDrawingVertices([]); // 그리기 모드 시작 (빈 배열)
     setIsAddRoiModalOpen(true);
   };
 
+  const handleCloseAddRoiModal = () => {
+    setIsAddRoiModalOpen(false);
+    setDrawingVertices(null); // 그리기 모드 종료
+  };
+
+  const handleAddVertex = (vertex) => {
+    setDrawingVertices((prev) => {
+      if (!prev || prev.length >= 4) return prev;
+      return [...prev, vertex];
+    });
+  };
+
+  const handleResetVertices = () => {
+    setDrawingVertices([]);
+  };
+
   const handleAddRoi = ({ name }) => {
+    if (!drawingVertices || drawingVertices.length !== 4) return;
     const maxId = rois.reduce((max, r) => Math.max(max, r.id), 0);
     const newRoi = {
       id: maxId + 1,
       cameraId: selectedCameraId,
       name,
-      // 임시 좌표 — 영상 중앙에 사각형. Phase 2에서 사용자가 직접 그리도록 교체 예정.
-      coordinates: [[660, 290], [1260, 290], [1260, 790], [660, 790]],
+      coordinates: drawingVertices,
     };
     setRois((prev) => [...prev, newRoi]);
+    setDrawingVertices(null);
   };
 
   return (
@@ -160,6 +180,8 @@ export default function Monitoring() {
           cameraName={selectedCamera?.name ?? ''}
           status={mockStatus}
           rois={visibleRois}
+          drawingVertices={drawingVertices}
+          onAddVertex={handleAddVertex}
         />
         <RoiSidebar
           rois={visibleRois}
@@ -181,8 +203,10 @@ export default function Monitoring() {
       {isAddRoiModalOpen && (
         <AddRoiModal
           cameraName={selectedCamera?.name ?? ''}
+          vertices={drawingVertices ?? []}
+          onResetVertices={handleResetVertices}
           onAddRoi={handleAddRoi}
-          onClose={() => setIsAddRoiModalOpen(false)}
+          onClose={handleCloseAddRoiModal}
         />
       )}
     </div>

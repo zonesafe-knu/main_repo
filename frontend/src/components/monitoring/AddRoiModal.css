@@ -31,26 +31,59 @@
   color: #C0392B;
 }
 
-.roi-coord-placeholder {
+/* ===== 그리기 모드: 모달이 영상 클릭 막지 않도록 우측 상단 floating ===== */
+.modal-backdrop.modal-backdrop-floating {
+  pointer-events: none; /* 백드롭은 클릭 통과 */
+  background: transparent;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 90px 24px 24px 24px;
+}
+
+.modal-card.modal-card-floating {
+  pointer-events: auto; /* 모달 카드 내부는 정상 클릭 */
+  width: 340px;
+  max-width: calc(100vw - 48px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+/* ===== 꼭짓점 카운터 + 리셋 ===== */
+.roi-vertex-status {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  justify-content: space-between;
+  padding: 10px 14px;
   background: #FAFAF7;
-  border: 1px dashed #D5D0C5;
+  border: 1px solid #E5DFD2;
   border-radius: 4px;
+}
+
+.roi-vertex-counter {
+  font-size: 0.9rem;
   color: #888;
+  font-weight: 500;
+}
+
+.roi-vertex-counter.complete {
+  color: #27AE60;
+}
+
+.roi-vertex-reset {
+  background: transparent;
+  border: none;
+  color: #8C6A3E;
   font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-family: inherit;
 }
 
-.roi-coord-icon {
-  font-size: 1.4rem;
-  color: #C4B49A;
-  flex-shrink: 0;
+.roi-vertex-reset:hover {
+  text-decoration: underline;
 }
 
-.roi-coord-note {
-  font-size: 0.75rem;
+.roi-vertex-hint {
+  margin: 6px 0 0 0;
+  font-size: 0.78rem;
   color: #AAA;
-  margin-top: 2px;
 }

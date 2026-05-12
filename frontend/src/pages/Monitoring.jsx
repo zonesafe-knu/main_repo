@@ -59,9 +59,20 @@ export default function Monitoring() {
   const [isAddRoiModalOpen, setIsAddRoiModalOpen] = useState(false);
   // ROI 그리는 중인 꼭짓점들. null = 그리기 모드 아님.
   const [drawingVertices, setDrawingVertices] = useState(null);
+  // 수정 중인 ROI ID. null = 추가 모드, 값 있으면 수정 모드.
+  const [editingRoiId, setEditingRoiId] = useState(null);
 
   // 현재 선택된 카메라의 ROI만 표시
   const visibleRois = rois.filter((r) => r.cameraId === selectedCameraId);
+
+  // 영상에 표시할 ROI: 편집 중인 건 제외 (노란 그리기 상태로만 보이게)
+  const displayRois = editingRoiId
+    ? visibleRois.filter((r) => r.id !== editingRoiId)
+    : visibleRois;
+
+  const editingRoi = editingRoiId
+    ? rois.find((r) => r.id === editingRoiId)
+    : null;
 
   const selectedCamera = sites
     .flatMap((s) => s.cameras)
@@ -130,13 +141,24 @@ export default function Monitoring() {
       alert('카메라를 먼저 선택해주세요');
       return;
     }
-    setDrawingVertices([]); // 그리기 모드 시작 (빈 배열)
+    setEditingRoiId(null);
+    setDrawingVertices([]); // 추가 모드: 빈 배열
+    setIsAddRoiModalOpen(true);
+  };
+
+  const handleOpenEditRoi = (roiId) => {
+    const roi = rois.find((r) => r.id === roiId);
+    if (!roi) return;
+    setEditingRoiId(roiId);
+    // 수정 모드: 기존 좌표로 미리 채움 (이름만 바꾸고 싶을 때 다시 안 찍어도 됨)
+    setDrawingVertices([...roi.coordinates]);
     setIsAddRoiModalOpen(true);
   };
 
   const handleCloseAddRoiModal = () => {
     setIsAddRoiModalOpen(false);
-    setDrawingVertices(null); // 그리기 모드 종료
+    setDrawingVertices(null);
+    setEditingRoiId(null);
   };
 
   const handleAddVertex = (vertex) => {
@@ -150,17 +172,33 @@ export default function Monitoring() {
     setDrawingVertices([]);
   };
 
-  const handleAddRoi = ({ name }) => {
+  // 추가/수정 통합 저장
+  const handleSaveRoi = ({ name }) => {
     if (!drawingVertices || drawingVertices.length !== 4) return;
-    const maxId = rois.reduce((max, r) => Math.max(max, r.id), 0);
-    const newRoi = {
-      id: maxId + 1,
-      cameraId: selectedCameraId,
-      name,
-      coordinates: drawingVertices,
-    };
-    setRois((prev) => [...prev, newRoi]);
+
+    if (editingRoiId) {
+      // 수정 모드: 기존 ROI 업데이트
+      setRois((prev) =>
+        prev.map((r) =>
+          r.id === editingRoiId
+            ? { ...r, name, coordinates: drawingVertices }
+            : r
+        )
+      );
+    } else {
+      // 추가 모드: 새 ROI 생성
+      const maxId = rois.reduce((max, r) => Math.max(max, r.id), 0);
+      const newRoi = {
+        id: maxId + 1,
+        cameraId: selectedCameraId,
+        name,
+        coordinates: drawingVertices,
+      };
+      setRois((prev) => [...prev, newRoi]);
+    }
+
     setDrawingVertices(null);
+    setEditingRoiId(null);
   };
 
   return (
@@ -179,14 +217,14 @@ export default function Monitoring() {
         <LiveVideoPanel
           cameraName={selectedCamera?.name ?? ''}
           status={mockStatus}
-          rois={visibleRois}
+          rois={displayRois}
           drawingVertices={drawingVertices}
           onAddVertex={handleAddVertex}
         />
         <RoiSidebar
           rois={visibleRois}
           onAddRoi={handleOpenAddRoiModal}
-          onEditRoi={(id) => alert(`ROI ${id} 수정`)}
+          onEditRoi={handleOpenEditRoi}
           onDeleteRoi={handleDeleteRoi}
         />
       </div>
@@ -203,9 +241,10 @@ export default function Monitoring() {
       {isAddRoiModalOpen && (
         <AddRoiModal
           cameraName={selectedCamera?.name ?? ''}
+          editingRoi={editingRoi}
           vertices={drawingVertices ?? []}
           onResetVertices={handleResetVertices}
-          onAddRoi={handleAddRoi}
+          onSubmit={handleSaveRoi}
           onClose={handleCloseAddRoiModal}
         />
       )}

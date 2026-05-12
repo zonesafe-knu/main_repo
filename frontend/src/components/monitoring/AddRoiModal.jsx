@@ -3,20 +3,27 @@ import './AddRoiModal.css';
 
 const MAX_VERTICES = 4;
 
+/**
+ * 위험구역 추가/수정 모달.
+ * - editingRoi가 null이면 추가 모드, 객체면 수정 모드.
+ */
 export default function AddRoiModal({
   cameraName,
+  editingRoi = null,
   vertices = [],
   onResetVertices,
-  onAddRoi,
+  onSubmit,
   onClose,
 }) {
-  const [name, setName] = useState('');
+  const isEditMode = editingRoi !== null;
+  const [name, setName] = useState(editingRoi?.name ?? '');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+    if (isEditMode) inputRef.current?.select();
+  }, [isEditMode]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -41,7 +48,7 @@ export default function AddRoiModal({
       setError(`꼭짓점 ${MAX_VERTICES}개를 모두 선택해주세요`);
       return;
     }
-    onAddRoi?.({ name: trimmed });
+    onSubmit?.({ name: trimmed });
     onClose?.();
   };
 
@@ -52,7 +59,7 @@ export default function AddRoiModal({
     <div className="modal-backdrop modal-backdrop-floating">
       <div className="modal-card modal-card-floating">
         <div className="modal-header">
-          <h3>위험구역 추가</h3>
+          <h3>{isEditMode ? '위험구역 수정' : '위험구역 추가'}</h3>
           <button
             type="button"
             className="modal-close"
@@ -106,7 +113,9 @@ export default function AddRoiModal({
               )}
             </div>
             <p className="roi-vertex-hint">
-              영상에서 꼭짓점이 될 위치를 {MAX_VERTICES}번 클릭하세요.
+              {isEditMode
+                ? '좌표를 바꾸려면 "다시 선택" 후 영상에서 다시 클릭하세요. 이름만 변경하려면 그대로 저장.'
+                : `영상에서 꼭짓점이 될 위치를 ${MAX_VERTICES}번 클릭하세요.`}
             </p>
           </div>
         </div>
@@ -125,7 +134,7 @@ export default function AddRoiModal({
             onClick={handleSubmit}
             disabled={!canSubmit}
           >
-            추가
+            {isEditMode ? '저장' : '추가'}
           </button>
         </div>
       </div>

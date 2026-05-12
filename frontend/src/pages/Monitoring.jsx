@@ -26,18 +26,19 @@ const initialSites = [
   },
 ];
 
+// ROI 좌표는 영상 원본 해상도(1920x1080) 기준
 const initialRois = [
   {
     id: 1,
     cameraId: 1,
     name: '#1 지게차 진입 구역',
-    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
+    coordinates: [[200, 300], [800, 300], [800, 800], [200, 800]],
   },
   {
     id: 2,
     cameraId: 1,
     name: '#2 로봇 접근 구역',
-    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
+    coordinates: [[1100, 250], [1700, 250], [1700, 700], [1100, 700]],
   },
 ];
 
@@ -136,8 +137,8 @@ export default function Monitoring() {
       id: maxId + 1,
       cameraId: selectedCameraId,
       name,
-      // 임시 좌표 — 추후 canvas 편집기로 교체
-      coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
+      // 임시 좌표 — 영상 중앙에 사각형. Phase 2에서 사용자가 직접 그리도록 교체 예정.
+      coordinates: [[660, 290], [1260, 290], [1260, 790], [660, 790]],
     };
     setRois((prev) => [...prev, newRoi]);
   };
@@ -158,6 +159,7 @@ export default function Monitoring() {
         <LiveVideoPanel
           cameraName={selectedCamera?.name ?? ''}
           status={mockStatus}
+          rois={visibleRois}
         />
         <RoiSidebar
           rois={visibleRois}

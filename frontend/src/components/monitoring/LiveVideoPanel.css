@@ -28,9 +28,68 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .mock-video-text { color: #666; font-size: 1.2rem; }
+
+/* ===== ROI 오버레이 ===== */
+.roi-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 영상 클릭 막지 않음 (Phase 2에서 활성화 예정) */
+}
+
+.roi-polygon {
+  fill: rgba(255, 23, 68, 0.15);
+  stroke: #FF1744;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.roi-vertex {
+  fill: #FFFFFF;
+  stroke: #FF1744;
+  stroke-width: 3;
+}
+
+.roi-label {
+  fill: #FFFFFF;
+  font-size: 26px;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: inherit;
+}
+
+/* ===== 그리기 모드 (꼭짓점 클릭 받기) ===== */
+.roi-overlay.interactive {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.roi-drawing-line {
+  fill: none;
+  stroke: #FFD700;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+  stroke-linejoin: round;
+}
+
+.roi-drawing-polygon {
+  fill: rgba(255, 215, 0, 0.2);
+  stroke: #FFD700;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.roi-drawing-vertex {
+  fill: #FFD700;
+  stroke: #FFFFFF;
+  stroke-width: 3;
+}
 
 .video-status-bar {
   display: flex;

@@ -1,0 +1,89 @@
+/*
+ * 공통 모달 스타일(.modal-backdrop, .modal-card, .modal-header, .modal-body,
+ * .modal-footer, .form-group, .form-input, .form-primary-btn 등)은
+ * AddCameraModal.css에서 정의됨 (Monitoring.jsx에서 import되어 항상 로드됨).
+ * 여기엔 ROI 모달 전용 스타일만 정의.
+ */
+
+.roi-target-camera {
+  margin: 0;
+  padding: 10px 14px;
+  background: #F4F2EC;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.roi-target-camera strong {
+  color: #333;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.form-input.has-error {
+  border-color: #C0392B;
+  background: #FDEEEC;
+}
+
+.form-error {
+  margin: 4px 0 0 0;
+  font-size: 0.78rem;
+  color: #C0392B;
+}
+
+/* ===== 그리기 모드: 모달이 영상 클릭 막지 않도록 우측 상단 floating ===== */
+.modal-backdrop.modal-backdrop-floating {
+  pointer-events: none; /* 백드롭은 클릭 통과 */
+  background: transparent;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 90px 24px 24px 24px;
+}
+
+.modal-card.modal-card-floating {
+  pointer-events: auto; /* 모달 카드 내부는 정상 클릭 */
+  width: 340px;
+  max-width: calc(100vw - 48px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+/* ===== 꼭짓점 카운터 + 리셋 ===== */
+.roi-vertex-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #FAFAF7;
+  border: 1px solid #E5DFD2;
+  border-radius: 4px;
+}
+
+.roi-vertex-counter {
+  font-size: 0.9rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.roi-vertex-counter.complete {
+  color: #27AE60;
+}
+
+.roi-vertex-reset {
+  background: transparent;
+  border: none;
+  color: #8C6A3E;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-family: inherit;
+}
+
+.roi-vertex-reset:hover {
+  text-decoration: underline;
+}
+
+.roi-vertex-hint {
+  margin: 6px 0 0 0;
+  font-size: 0.78rem;
+  color: #AAA;
+}

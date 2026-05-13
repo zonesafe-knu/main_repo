@@ -1,6 +1,34 @@
 import './LiveVideoPanel.css';
 
-export default function LiveVideoPanel({ cameraName, status }) {
+// 영상 원본 해상도 — SVG 좌표계 (모든 ROI 좌표는 이 기준)
+const VIDEO_WIDTH = 1920;
+const VIDEO_HEIGHT = 1080;
+const MAX_VERTICES = 4;
+
+export default function LiveVideoPanel({
+  cameraName,
+  status,
+  rois = [],
+  drawingVertices = null, // null = 그리기 모드 아님, 배열 = 그리기 모드
+  onAddVertex,
+}) {
+  const isDrawing = Array.isArray(drawingVertices);
+
+  // 화면 픽셀 좌표 → 영상 좌표(viewBox 기준) 변환
+  const handleSvgClick = (e) => {
+    if (!isDrawing || drawingVertices.length >= MAX_VERTICES) return;
+    const svg = e.currentTarget;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const cursorPt = pt.matrixTransform(ctm.inverse());
+    onAddVertex?.([Math.round(cursorPt.x), Math.round(cursorPt.y)]);
+  };
+
+  const hasContent = rois.length > 0 || isDrawing;
+
   return (
     <section className="center-video-area">
       <div className="video-header">
@@ -10,6 +38,75 @@ export default function LiveVideoPanel({ cameraName, status }) {
 
       <div className="video-player-placeholder">
         <div className="mock-video-text">CCTV 영상 화면</div>
+
+        {hasContent && (
+          <svg
+            className={`roi-overlay ${isDrawing ? 'interactive' : ''}`}
+            viewBox={`0 0 ${VIDEO_WIDTH} ${VIDEO_HEIGHT}`}
+            preserveAspectRatio="xMidYMid meet"
+            onClick={handleSvgClick}
+          >
+            {/* 기존 ROI 표시 */}
+            {rois.map((roi) => (
+              <g key={roi.id} className="roi-shape">
+                <polygon
+                  points={roi.coordinates
+                    .map(([x, y]) => `${x},${y}`)
+                    .join(' ')}
+                  className="roi-polygon"
+                />
+                {roi.coordinates.map(([x, y], i) => (
+                  <circle
+                    key={i}
+                    cx={x}
+                    cy={y}
+                    r="10"
+                    className="roi-vertex"
+                  />
+                ))}
+                <text
+                  x={roi.coordinates[0][0]}
+                  y={roi.coordinates[0][1] - 16}
+                  className="roi-label"
+                >
+                  {roi.name}
+                </text>
+              </g>
+            ))}
+
+            {/* 그리는 중인 다각형 미리보기 */}
+            {isDrawing && drawingVertices.length > 0 && (
+              <g className="roi-drawing">
+                {drawingVertices.length === MAX_VERTICES ? (
+                  <polygon
+                    points={drawingVertices
+                      .map(([x, y]) => `${x},${y}`)
+                      .join(' ')}
+                    className="roi-drawing-polygon"
+                  />
+                ) : (
+                  drawingVertices.length >= 2 && (
+                    <polyline
+                      points={drawingVertices
+                        .map(([x, y]) => `${x},${y}`)
+                        .join(' ')}
+                      className="roi-drawing-line"
+                    />
+                  )
+                )}
+                {drawingVertices.map(([x, y], i) => (
+                  <circle
+                    key={i}
+                    cx={x}
+                    cy={y}
+                    r="14"
+                    className="roi-drawing-vertex"
+                  />
+                ))}
+              </g>
+            )}
+          </svg>
+        )}
       </div>
 
       <div className="video-status-bar">

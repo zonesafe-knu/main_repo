@@ -1,44 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './Monitoring.css';
 import Header from '../components/common/Header';
 import CameraSidebar from '../components/monitoring/CameraSidebar';
 import LiveVideoPanel from '../components/monitoring/LiveVideoPanel';
 import RoiSidebar from '../components/monitoring/RoiSidebar';
 import AddCameraModal from '../components/monitoring/AddCameraModal';
-
-// TODO: 백엔드 연결 시 src/api/cameras.js, src/api/rois.js로 이동
-const initialSites = [
-  {
-    name: '대구공장 A동',
-    cameras: [
-      { id: 1, name: '1번 라인 입구' },
-      { id: 2, name: '2번 적재구역' },
-      { id: 3, name: '3번 출하장' },
-    ],
-  },
-  {
-    name: '대구공장 B동',
-    cameras: [
-      { id: 4, name: 'B동 입구' },
-      { id: 5, name: 'B동 지게차 통로' },
-    ],
-  },
-];
-
-const mockRois = [
-  {
-    id: 1,
-    name: '#1 지게차 진입 구역',
-    status: 'danger',
-    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
-  },
-  {
-    id: 2,
-    name: '#2 로봇 접근 구역',
-    status: 'safe',
-    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
-  },
-];
+import AddRoiModal from '../components/monitoring/AddRoiModal';
+import { fetchCameras } from '../api/cameras';
+import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 
 const mockStatus = {
   date: '2026-4-27(GMT+9)',
@@ -49,15 +18,91 @@ const mockStatus = {
   todayAlarms: 2,
 };
 
+// API 응답 → 컴포넌트가 쓰는 shape 변환
+// 카메라: 명세서의 flat 배열을 siteName 기준으로 그룹핑
+function camerasToSites(cameras) {
+  const grouped = new Map();
+  for (const c of cameras) {
+    if (!grouped.has(c.siteName)) grouped.set(c.siteName, []);
+    grouped.get(c.siteName).push({ id: c.cameraId, name: c.name });
+  }
+  return Array.from(grouped, ([name, cams]) => ({ name, cameras: cams }));
+}
+
+// ROI: API 필드명을 컴포넌트가 쓰는 이름으로 변환
+function apiRoiToLocal(r) {
+  return {
+    id: r.roiId,
+    cameraId: r.cameraId,
+    name: r.name,
+    coordinates: r.polygon,
+  };
+}
+
 export default function Monitoring() {
-  const [sites, setSites] = useState(initialSites);
-  const [selectedCameraId, setSelectedCameraId] = useState(1);
+  const [sites, setSites] = useState([]);
+  const [rois, setRois] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddRoiModalOpen, setIsAddRoiModalOpen] = useState(false);
+  // ROI 그리는 중인 꼭짓점들. null = 그리기 모드 아님.
+  const [drawingVertices, setDrawingVertices] = useState(null);
+  // 수정 중인 ROI ID. null = 추가 모드, 값 있으면 수정 모드.
+  const [editingRoiId, setEditingRoiId] = useState(null);
+
+  // ===== 초기 로드 =====
+  useEffect(() => {
+    let cancelled = false;
+    fetchCameras()
+      .then((cams) => {
+        if (cancelled) return;
+        const newSites = camerasToSites(cams);
+        setSites(newSites);
+        // 첫 카메라 자동 선택
+        const firstCam = newSites.flatMap((s) => s.cameras)[0];
+        if (firstCam) setSelectedCameraId(firstCam.id);
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('카메라 로드 실패:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRois()
+      .then((list) => {
+        if (cancelled) return;
+        setRois(list.map(apiRoiToLocal));
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('ROI 로드 실패:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ===== 파생값 =====
+  const visibleRois = rois.filter((r) => r.cameraId === selectedCameraId);
+
+  // 영상에 표시할 ROI: 편집 중인 건 제외 (노란 그리기 상태로만 보이게)
+  const displayRois = editingRoiId
+    ? visibleRois.filter((r) => r.id !== editingRoiId)
+    : visibleRois;
+
+  const editingRoi = editingRoiId
+    ? rois.find((r) => r.id === editingRoiId)
+    : null;
 
   const selectedCamera = sites
     .flatMap((s) => s.cameras)
     .find((c) => c.id === selectedCameraId);
 
+  // ===== 카메라 CRUD =====
+  // TODO: cameras.js에 createCamera/updateCamera/deleteCamera 추가 후 API 호출로 교체
   const handleRenameCamera = (cameraId, newName) => {
     setSites((prev) =>
       prev.map((site) => ({
@@ -108,8 +153,84 @@ export default function Monitoring() {
       )
     );
 
-    // 추가한 카메라를 자동으로 선택
     setSelectedCameraId(newCamera.id);
+  };
+
+  // ===== ROI CRUD (API 호출) =====
+  const handleDeleteRoi = async (roiId) => {
+    try {
+      await deleteRoi(roiId);
+      setRois((prev) => prev.filter((r) => r.id !== roiId));
+    } catch (err) {
+      alert(err.message ?? 'ROI 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleOpenAddRoiModal = () => {
+    if (!selectedCameraId) {
+      alert('카메라를 먼저 선택해주세요');
+      return;
+    }
+    setEditingRoiId(null);
+    setDrawingVertices([]);
+    setIsAddRoiModalOpen(true);
+  };
+
+  const handleOpenEditRoi = (roiId) => {
+    const roi = rois.find((r) => r.id === roiId);
+    if (!roi) return;
+    setEditingRoiId(roiId);
+    setDrawingVertices([...roi.coordinates]);
+    setIsAddRoiModalOpen(true);
+  };
+
+  const handleCloseAddRoiModal = () => {
+    setIsAddRoiModalOpen(false);
+    setDrawingVertices(null);
+    setEditingRoiId(null);
+  };
+
+  const handleAddVertex = (vertex) => {
+    setDrawingVertices((prev) => {
+      if (!prev || prev.length >= 4) return prev;
+      return [...prev, vertex];
+    });
+  };
+
+  const handleResetVertices = () => {
+    setDrawingVertices([]);
+  };
+
+  // 추가/수정 통합 저장
+  const handleSaveRoi = async ({ name }) => {
+    if (!drawingVertices || drawingVertices.length !== 4) return;
+
+    try {
+      if (editingRoiId) {
+        // 수정 모드
+        const updated = await updateRoi(editingRoiId, {
+          name,
+          polygon: drawingVertices,
+        });
+        setRois((prev) =>
+          prev.map((r) =>
+            r.id === editingRoiId ? apiRoiToLocal(updated) : r
+          )
+        );
+      } else {
+        // 추가 모드
+        const created = await createRoi({
+          cameraId: selectedCameraId,
+          name,
+          polygon: drawingVertices,
+        });
+        setRois((prev) => [...prev, apiRoiToLocal(created)]);
+      }
+      setDrawingVertices(null);
+      setEditingRoiId(null);
+    } catch (err) {
+      alert(err.message ?? 'ROI 저장에 실패했습니다.');
+    }
   };
 
   return (
@@ -128,12 +249,15 @@ export default function Monitoring() {
         <LiveVideoPanel
           cameraName={selectedCamera?.name ?? ''}
           status={mockStatus}
+          rois={displayRois}
+          drawingVertices={drawingVertices}
+          onAddVertex={handleAddVertex}
         />
         <RoiSidebar
-          rois={mockRois}
-          onAddRoi={() => alert('ROI 추가는 추후 구현')}
-          onEditRoi={(id) => alert(`ROI ${id} 수정`)}
-          onDeleteRoi={(id) => alert(`ROI ${id} 삭제`)}
+          rois={visibleRois}
+          onAddRoi={handleOpenAddRoiModal}
+          onEditRoi={handleOpenEditRoi}
+          onDeleteRoi={handleDeleteRoi}
         />
       </div>
 
@@ -143,6 +267,17 @@ export default function Monitoring() {
           onAddCamera={handleAddCamera}
           onAddSite={handleAddSite}
           onClose={handleCloseAddModal}
+        />
+      )}
+
+      {isAddRoiModalOpen && (
+        <AddRoiModal
+          cameraName={selectedCamera?.name ?? ''}
+          editingRoi={editingRoi}
+          vertices={drawingVertices ?? []}
+          onResetVertices={handleResetVertices}
+          onSubmit={handleSaveRoi}
+          onClose={handleCloseAddRoiModal}
         />
       )}
     </div>

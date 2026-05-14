@@ -6,14 +6,13 @@ import LiveVideoPanel from '../components/monitoring/LiveVideoPanel';
 import RoiSidebar from '../components/monitoring/RoiSidebar';
 import AddCameraModal from '../components/monitoring/AddCameraModal';
 import AddRoiModal from '../components/monitoring/AddRoiModal';
-import { fetchCameras } from '../api/cameras';
 import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 import { fetchLatestDetection } from '../api/detections';
 import { fetchStatsSummary } from '../api/stats';
 
 // 백엔드 없는 동안 카메라 추가/수정/삭제 결과가 새로고침에도 유지되도록
-// localStorage 에 임시 저장. 백엔드 연동 시 이 블록 전체와 useEffect 두 개를 제거하고
-// fetchCameras 호출로 교체.
+// localStorage 에 임시 저장. 백엔드 연동 시 이 블록 + 관련 useState 초기화 + useEffect 두 개를
+// 제거하고 fetchCameras 호출로 교체.
 const SITES_STORAGE_KEY = '__monitoring_sites_v1';
 const SELECTED_CAM_STORAGE_KEY = '__monitoring_selected_cam_v1';
 
@@ -31,7 +30,6 @@ const saveToStorage = (key, value) => {
   } catch { /* ignore */ }
 };
 
-// TODO: 백엔드 연결 시 src/api/cameras.js, src/api/rois.js로 이동
 const initialSites = [
   {
     name: '대구공장 A동',
@@ -50,28 +48,6 @@ const initialSites = [
   },
 ];
 
-const mockRois = [
-  {
-    id: 1,
-    name: '#1 지게차 진입 구역',
-    status: 'danger',
-    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
-  },
-  {
-    id: 2,
-    name: '#2 로봇 접근 구역',
-    status: 'safe',
-    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
-  },
-];
-
-const mockStatus = {
-  date: '2026-4-27(GMT+9)',
-  time: '23:00',
-  workerCount: 1,
-  forkliftCount: 1,
-  fps: 28.4,
-  todayAlarms: 2,
 const DETECTION_POLL_MS = 1500;
 const STATS_POLL_MS = 60_000;
 
@@ -91,17 +67,6 @@ const endOfTodayIso = () => {
   return d.toISOString();
 };
 
-// API 응답 → 컴포넌트가 쓰는 shape 변환
-// 카메라: 명세서의 flat 배열을 siteName 기준으로 그룹핑
-function camerasToSites(cameras) {
-  const grouped = new Map();
-  for (const c of cameras) {
-    if (!grouped.has(c.siteName)) grouped.set(c.siteName, []);
-    grouped.get(c.siteName).push({ id: c.cameraId, name: c.name });
-  }
-  return Array.from(grouped, ([name, cams]) => ({ name, cameras: cams }));
-}
-
 // ROI: API 필드명을 컴포넌트가 쓰는 이름으로 변환
 function apiRoiToLocal(r) {
   return {
@@ -113,6 +78,7 @@ function apiRoiToLocal(r) {
 }
 
 export default function Monitoring() {
+  // sites / selectedCameraId 는 localStorage 기반 (백엔드 없으므로)
   const [sites, setSites] = useState(() => {
     const loaded = loadFromStorage(SITES_STORAGE_KEY, null);
     return Array.isArray(loaded) ? loaded : initialSites;
@@ -123,9 +89,8 @@ export default function Monitoring() {
     const camIds = sitesNow.flatMap((s) => s.cameras.map((c) => c.id));
     return camIds.includes(loaded) ? loaded : (camIds[0] ?? null);
   });
-  const [sites, setSites] = useState([]);
+
   const [rois, setRois] = useState([]);
-  const [selectedCameraId, setSelectedCameraId] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddRoiModalOpen, setIsAddRoiModalOpen] = useState(false);
   // ROI 그리는 중인 꼭짓점들. null = 그리기 모드 아님.
@@ -137,6 +102,15 @@ export default function Monitoring() {
   const [now, setNow] = useState(() => new Date());
   const [detection, setDetection] = useState(null);
   const [todayStats, setTodayStats] = useState(null);
+
+  // sites / selectedCameraId 변경 시 localStorage 동기화
+  useEffect(() => {
+    saveToStorage(SITES_STORAGE_KEY, sites);
+  }, [sites]);
+
+  useEffect(() => {
+    saveToStorage(SELECTED_CAM_STORAGE_KEY, selectedCameraId);
+  }, [selectedCameraId]);
 
   // 1초마다 시계 갱신
   useEffect(() => {
@@ -201,26 +175,7 @@ export default function Monitoring() {
     };
   }, [now, detection, todayStats]);
 
-  // ===== 초기 로드 =====
-  useEffect(() => {
-    let cancelled = false;
-    fetchCameras()
-      .then((cams) => {
-        if (cancelled) return;
-        const newSites = camerasToSites(cams);
-        setSites(newSites);
-        // 첫 카메라 자동 선택
-        const firstCam = newSites.flatMap((s) => s.cameras)[0];
-        if (firstCam) setSelectedCameraId(firstCam.id);
-      })
-      .catch((err) => {
-        if (!cancelled) console.error('카메라 로드 실패:', err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  // ROI 는 API 호출 (백엔드 연동되면 그대로 동작)
   useEffect(() => {
     let cancelled = false;
     fetchRois()
@@ -248,21 +203,11 @@ export default function Monitoring() {
     ? rois.find((r) => r.id === editingRoiId)
     : null;
 
-  // sites / selectedCameraId 변경될 때마다 localStorage 동기화
-  useEffect(() => {
-    saveToStorage(SITES_STORAGE_KEY, sites);
-  }, [sites]);
-
-  useEffect(() => {
-    saveToStorage(SELECTED_CAM_STORAGE_KEY, selectedCameraId);
-  }, [selectedCameraId]);
-
   const selectedCamera = sites
     .flatMap((s) => s.cameras)
     .find((c) => c.id === selectedCameraId);
 
-  // ===== 카메라 CRUD =====
-  // TODO: cameras.js에 createCamera/updateCamera/deleteCamera 추가 후 API 호출로 교체
+  // ===== 카메라 CRUD (localStorage 기반, 백엔드 연동 시 cameras.js API 호출로 교체) =====
   const handleRenameCamera = (cameraId, newName) => {
     setSites((prev) =>
       prev.map((site) => ({

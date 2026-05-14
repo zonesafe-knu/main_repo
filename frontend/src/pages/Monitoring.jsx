@@ -11,6 +11,67 @@ import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 import { fetchLatestDetection } from '../api/detections';
 import { fetchStatsSummary } from '../api/stats';
 
+// 백엔드 없는 동안 카메라 추가/수정/삭제 결과가 새로고침에도 유지되도록
+// localStorage 에 임시 저장. 백엔드 연동 시 이 블록 전체와 useEffect 두 개를 제거하고
+// fetchCameras 호출로 교체.
+const SITES_STORAGE_KEY = '__monitoring_sites_v1';
+const SELECTED_CAM_STORAGE_KEY = '__monitoring_selected_cam_v1';
+
+const loadFromStorage = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw != null) return JSON.parse(raw);
+  } catch { /* localStorage 차단 환경 */ }
+  return fallback;
+};
+
+const saveToStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* ignore */ }
+};
+
+// TODO: 백엔드 연결 시 src/api/cameras.js, src/api/rois.js로 이동
+const initialSites = [
+  {
+    name: '대구공장 A동',
+    cameras: [
+      { id: 1, name: '1번 라인 입구' },
+      { id: 2, name: '2번 적재구역' },
+      { id: 3, name: '3번 출하장' },
+    ],
+  },
+  {
+    name: '대구공장 B동',
+    cameras: [
+      { id: 4, name: 'B동 입구' },
+      { id: 5, name: 'B동 지게차 통로' },
+    ],
+  },
+];
+
+const mockRois = [
+  {
+    id: 1,
+    name: '#1 지게차 진입 구역',
+    status: 'danger',
+    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
+  },
+  {
+    id: 2,
+    name: '#2 로봇 접근 구역',
+    status: 'safe',
+    coordinates: [[1, 0], [1, 0], [1, 0], [1, 0]],
+  },
+];
+
+const mockStatus = {
+  date: '2026-4-27(GMT+9)',
+  time: '23:00',
+  workerCount: 1,
+  forkliftCount: 1,
+  fps: 28.4,
+  todayAlarms: 2,
 const DETECTION_POLL_MS = 1500;
 const STATS_POLL_MS = 60_000;
 
@@ -52,6 +113,16 @@ function apiRoiToLocal(r) {
 }
 
 export default function Monitoring() {
+  const [sites, setSites] = useState(() => {
+    const loaded = loadFromStorage(SITES_STORAGE_KEY, null);
+    return Array.isArray(loaded) ? loaded : initialSites;
+  });
+  const [selectedCameraId, setSelectedCameraId] = useState(() => {
+    const loaded = loadFromStorage(SELECTED_CAM_STORAGE_KEY, null);
+    const sitesNow = loadFromStorage(SITES_STORAGE_KEY, null) ?? initialSites;
+    const camIds = sitesNow.flatMap((s) => s.cameras.map((c) => c.id));
+    return camIds.includes(loaded) ? loaded : (camIds[0] ?? null);
+  });
   const [sites, setSites] = useState([]);
   const [rois, setRois] = useState([]);
   const [selectedCameraId, setSelectedCameraId] = useState(null);
@@ -176,6 +247,15 @@ export default function Monitoring() {
   const editingRoi = editingRoiId
     ? rois.find((r) => r.id === editingRoiId)
     : null;
+
+  // sites / selectedCameraId 변경될 때마다 localStorage 동기화
+  useEffect(() => {
+    saveToStorage(SITES_STORAGE_KEY, sites);
+  }, [sites]);
+
+  useEffect(() => {
+    saveToStorage(SELECTED_CAM_STORAGE_KEY, selectedCameraId);
+  }, [selectedCameraId]);
 
   const selectedCamera = sites
     .flatMap((s) => s.cameras)

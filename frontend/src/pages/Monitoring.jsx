@@ -1,10 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './Monitoring.css';
 import Header from '../components/common/Header';
 import CameraSidebar from '../components/monitoring/CameraSidebar';
 import LiveVideoPanel from '../components/monitoring/LiveVideoPanel';
 import RoiSidebar from '../components/monitoring/RoiSidebar';
 import AddCameraModal from '../components/monitoring/AddCameraModal';
+
+// 백엔드 없는 동안 카메라 추가/수정/삭제 결과가 새로고침에도 유지되도록
+// localStorage 에 임시 저장. 백엔드 연동 시 이 블록 전체와 useEffect 두 개를 제거하고
+// fetchCameras 호출로 교체.
+const SITES_STORAGE_KEY = '__monitoring_sites_v1';
+const SELECTED_CAM_STORAGE_KEY = '__monitoring_selected_cam_v1';
+
+const loadFromStorage = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw != null) return JSON.parse(raw);
+  } catch { /* localStorage 차단 환경 */ }
+  return fallback;
+};
+
+const saveToStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* ignore */ }
+};
 
 // TODO: 백엔드 연결 시 src/api/cameras.js, src/api/rois.js로 이동
 const initialSites = [
@@ -50,9 +70,26 @@ const mockStatus = {
 };
 
 export default function Monitoring() {
-  const [sites, setSites] = useState(initialSites);
-  const [selectedCameraId, setSelectedCameraId] = useState(1);
+  const [sites, setSites] = useState(() => {
+    const loaded = loadFromStorage(SITES_STORAGE_KEY, null);
+    return Array.isArray(loaded) ? loaded : initialSites;
+  });
+  const [selectedCameraId, setSelectedCameraId] = useState(() => {
+    const loaded = loadFromStorage(SELECTED_CAM_STORAGE_KEY, null);
+    const sitesNow = loadFromStorage(SITES_STORAGE_KEY, null) ?? initialSites;
+    const camIds = sitesNow.flatMap((s) => s.cameras.map((c) => c.id));
+    return camIds.includes(loaded) ? loaded : (camIds[0] ?? null);
+  });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // sites / selectedCameraId 변경될 때마다 localStorage 동기화
+  useEffect(() => {
+    saveToStorage(SITES_STORAGE_KEY, sites);
+  }, [sites]);
+
+  useEffect(() => {
+    saveToStorage(SELECTED_CAM_STORAGE_KEY, selectedCameraId);
+  }, [selectedCameraId]);
 
   const selectedCamera = sites
     .flatMap((s) => s.cameras)

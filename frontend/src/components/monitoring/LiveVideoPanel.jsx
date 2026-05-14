@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import './LiveVideoPanel.css';
 
 // 영상 원본 해상도 — SVG 좌표계 (모든 ROI 좌표는 이 기준)
@@ -13,6 +14,46 @@ export default function LiveVideoPanel({
   onAddVertex,
 }) {
   const isDrawing = Array.isArray(drawingVertices);
+  const videoAreaRef = useRef(null);
+  // 네이티브 Fullscreen API가 차단된 환경(iframe 등)에서 쓸 CSS 폴백 상태
+  const [cssFullscreen, setCssFullscreen] = useState(false);
+
+  const handleFullscreen = async () => {
+    // 1) 네이티브 풀스크린 중이면 종료
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch { /* noop */ }
+      return;
+    }
+    // 2) CSS 폴백 풀스크린 중이면 종료
+    if (cssFullscreen) {
+      setCssFullscreen(false);
+      return;
+    }
+
+    // 3) 진입 — 네이티브 우선, 실패 시 CSS 폴백
+    const el = videoAreaRef.current;
+    if (!el) return;
+    const requestFs =
+      el.requestFullscreen ?? el.webkitRequestFullscreen ?? el.msRequestFullscreen;
+
+    if (requestFs) {
+      try {
+        await requestFs.call(el);
+        return;
+      } catch (err) {
+        console.warn('네이티브 풀스크린 거부됨, CSS 폴백 사용:', err);
+      }
+    }
+    setCssFullscreen(true);
+  };
+
+  // CSS 폴백 모드일 때 ESC 로 빠져나가게
+  useEffect(() => {
+    if (!cssFullscreen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setCssFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cssFullscreen]);
 
   // 화면 픽셀 좌표 → 영상 좌표(viewBox 기준) 변환
   const handleSvgClick = (e) => {
@@ -33,10 +74,24 @@ export default function LiveVideoPanel({
     <section className="center-video-area">
       <div className="video-header">
         <h3>{cameraName}</h3>
-        <button className="fullscreen-btn">전체화면</button>
+        <button className="fullscreen-btn" onClick={handleFullscreen}>
+          전체화면
+        </button>
       </div>
 
-      <div className="video-player-placeholder">
+      <div
+        className={`video-player-placeholder${cssFullscreen ? ' css-fullscreen' : ''}`}
+        ref={videoAreaRef}
+      >
+        {cssFullscreen && (
+          <button
+            type="button"
+            className="exit-fullscreen-btn"
+            onClick={() => setCssFullscreen(false)}
+          >
+            ✕ 닫기 (ESC)
+          </button>
+        )}
         {/* 백엔드 연동 시: cameras.{cameraId}.streamUrl(HLS) 로 교체 (명세 §3.5) */}
         <video
           className="live-video"

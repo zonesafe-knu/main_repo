@@ -37,7 +37,15 @@ export default function LiveVideoPanel({
       </div>
 
       <div className="video-player-placeholder">
-        <div className="mock-video-text">CCTV 영상 화면</div>
+        {/* 백엔드 연동 시: cameras.{cameraId}.streamUrl(HLS) 로 교체 (명세 §3.5) */}
+        <video
+          className="live-video"
+          src="/videos/sample.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+        />
 
         {hasContent && (
           <svg
@@ -128,7 +136,9 @@ export default function LiveVideoPanel({
         </div>
         <div className="status-item">
           <span className="label">추론속도</span>
-          <span className="value">{status.fps}FPS</span>
+          <span className="value">
+            {status.fps != null ? `${status.fps.toFixed(1)}FPS` : '—'}
+          </span>
         </div>
         <div className="status-item">
           <span className="label">금일 알림</span>

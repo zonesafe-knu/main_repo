@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import './Monitoring.css';
 import Header from '../components/common/Header';
 import CameraSidebar from '../components/monitoring/CameraSidebar';
@@ -8,14 +8,26 @@ import AddCameraModal from '../components/monitoring/AddCameraModal';
 import AddRoiModal from '../components/monitoring/AddRoiModal';
 import { fetchCameras } from '../api/cameras';
 import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
+import { fetchLatestDetection } from '../api/detections';
+import { fetchStatsSummary } from '../api/stats';
 
-const mockStatus = {
-  date: '2026-4-27(GMT+9)',
-  time: '23:00',
-  workerCount: 1,
-  forkliftCount: 1,
-  fps: 28.4,
-  todayAlarms: 2,
+const DETECTION_POLL_MS = 1500;
+const STATS_POLL_MS = 60_000;
+
+const formatStatusDate = (d) =>
+  `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}(GMT+9)`;
+const formatStatusTime = (d) =>
+  `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+const startOfTodayIso = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+};
+const endOfTodayIso = () => {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.toISOString();
 };
 
 // API 응답 → 컴포넌트가 쓰는 shape 변환
@@ -49,6 +61,74 @@ export default function Monitoring() {
   const [drawingVertices, setDrawingVertices] = useState(null);
   // 수정 중인 ROI ID. null = 추가 모드, 값 있으면 수정 모드.
   const [editingRoiId, setEditingRoiId] = useState(null);
+
+  // ===== 실시간 상태 (시각/탐지/통계) =====
+  const [now, setNow] = useState(() => new Date());
+  const [detection, setDetection] = useState(null);
+  const [todayStats, setTodayStats] = useState(null);
+
+  // 1초마다 시계 갱신
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // 선택된 카메라의 최신 탐지 결과 polling (백엔드 연동 시 §11 WebSocket으로 교체)
+  useEffect(() => {
+    if (!selectedCameraId) {
+      setDetection(null);
+      return;
+    }
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const data = await fetchLatestDetection({ cameraId: selectedCameraId });
+        if (!cancelled) setDetection(data);
+      } catch {
+        /* 일시 오류는 무시하고 다음 tick에 재시도 */
+      }
+    };
+    poll();
+    const id = setInterval(poll, DETECTION_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [selectedCameraId]);
+
+  // 금일 알림 통계 (자정 기준)
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await fetchStatsSummary({
+          from: startOfTodayIso(),
+          to: endOfTodayIso(),
+        });
+        if (!cancelled) setTodayStats(data);
+      } catch {
+        /* 일시 오류 무시 */
+      }
+    };
+    load();
+    const id = setInterval(load, STATS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const liveStatus = useMemo(() => {
+    const objects = detection?.objects ?? [];
+    return {
+      date: formatStatusDate(now),
+      time: formatStatusTime(now),
+      workerCount: objects.filter((o) => o.label === 'worker').length,
+      forkliftCount: objects.filter((o) => o.label === 'forklift').length,
+      fps: detection?.fps ?? null,
+      todayAlarms: todayStats?.totalAlarms ?? 0,
+    };
+  }, [now, detection, todayStats]);
 
   // ===== 초기 로드 =====
   useEffect(() => {
@@ -248,7 +328,7 @@ export default function Monitoring() {
         />
         <LiveVideoPanel
           cameraName={selectedCamera?.name ?? ''}
-          status={mockStatus}
+          status={liveStatus}
           rois={displayRois}
           drawingVertices={drawingVertices}
           onAddVertex={handleAddVertex}

@@ -41,6 +41,37 @@
   background-color: #000;
 }
 
+/* 네이티브 풀스크린 진입 시 검은 여백 처리 */
+.video-player-placeholder:fullscreen {
+  background-color: #000;
+}
+
+/* CSS 폴백 풀스크린 — Fullscreen API 가 차단된 환경 대응 */
+.video-player-placeholder.css-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  flex: none;
+}
+
+.exit-fullscreen-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  padding: 6px 14px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.exit-fullscreen-btn:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
 /* ===== ROI 오버레이 ===== */
 .roi-overlay {
   position: absolute;

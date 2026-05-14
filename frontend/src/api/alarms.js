@@ -134,6 +134,12 @@ export async function resolveAlarm(alarmId, comment = '') {
   return { ...target };
 }
 
+// mock 전용 — 다른 mock(stats 등)이 같은 데이터로 집계할 수 있게 노출.
+// 백엔드 연동 시 stats 쪽 mock 자체가 사라지므로 이 export 도 함께 제거.
+export function _getMockAlarms() {
+  return MOCK_ALARMS;
+}
+
 export async function bulkAckAlarms(alarmIds) {
   await sleep(MOCK_LATENCY_MS);
   let acked = 0;

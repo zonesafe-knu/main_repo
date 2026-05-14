@@ -10,14 +10,22 @@ export default function RoiSidebar({ rois, onAddRoi, onEditRoi, onDeleteRoi }) {
       </div>
 
       <div className="roi-list">
-        {rois.map((roi) => (
-          <RoiCard
-            key={roi.id}
-            roi={roi}
-            onEdit={() => onEditRoi?.(roi.id)}
-            onDelete={() => onDeleteRoi?.(roi.id)}
-          />
-        ))}
+        {rois.length === 0 ? (
+          <div className="roi-list-empty">
+            등록된 위험구역이 없습니다.
+            <br />
+            상단 + 버튼으로 추가하세요.
+          </div>
+        ) : (
+          rois.map((roi) => (
+            <RoiCard
+              key={roi.id}
+              roi={roi}
+              onEdit={() => onEditRoi?.(roi.id)}
+              onDelete={() => onDeleteRoi?.(roi.id)}
+            />
+          ))
+        )}
       </div>
     </aside>
   );

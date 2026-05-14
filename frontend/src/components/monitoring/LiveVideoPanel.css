@@ -28,9 +28,106 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
-.mock-video-text { color: #666; font-size: 1.2rem; }
+.live-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-color: #000;
+}
+
+/* 네이티브 풀스크린 진입 시 검은 여백 처리 */
+.video-player-placeholder:fullscreen {
+  background-color: #000;
+}
+
+/* CSS 폴백 풀스크린 — Fullscreen API 가 차단된 환경 대응 */
+.video-player-placeholder.css-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  flex: none;
+}
+
+.exit-fullscreen-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  padding: 6px 14px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.exit-fullscreen-btn:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* ===== ROI 오버레이 ===== */
+.roi-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 영상 클릭 막지 않음 (Phase 2에서 활성화 예정) */
+}
+
+.roi-polygon {
+  fill: rgba(255, 23, 68, 0.15);
+  stroke: #FF1744;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.roi-vertex {
+  fill: #FFFFFF;
+  stroke: #FF1744;
+  stroke-width: 3;
+}
+
+.roi-label {
+  fill: #FFFFFF;
+  font-size: 26px;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: inherit;
+}
+
+/* ===== 그리기 모드 (꼭짓점 클릭 받기) ===== */
+.roi-overlay.interactive {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.roi-drawing-line {
+  fill: none;
+  stroke: #FFD700;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+  stroke-linejoin: round;
+}
+
+.roi-drawing-polygon {
+  fill: rgba(255, 215, 0, 0.2);
+  stroke: #FFD700;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.roi-drawing-vertex {
+  fill: #FFD700;
+  stroke: #FFFFFF;
+  stroke-width: 3;
+}
 
 .video-status-bar {
   display: flex;

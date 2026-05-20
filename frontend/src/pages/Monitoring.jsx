@@ -90,7 +90,9 @@ export default function Monitoring() {
     loadFromStorage(SELECTED_CAM_STORAGE_KEY, null)
   );
 
-  const [rois, setRois] = useState([]);
+  // ROI raw 목록 (백엔드 응답 그대로). 화면용 변환은 useMemo 로 파생.
+  const [apiRois, setApiRois] = useState([]);
+  const rois = useMemo(() => apiRois.map(apiRoiToLocal), [apiRois]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddRoiModalOpen, setIsAddRoiModalOpen] = useState(false);
   // ROI 그리는 중인 꼭짓점들. null = 그리기 모드 아님.
@@ -201,7 +203,7 @@ export default function Monitoring() {
     fetchRois()
       .then((list) => {
         if (cancelled) return;
-        setRois(list.map(apiRoiToLocal));
+        setApiRois(list);
       })
       .catch((err) => {
         if (!cancelled) console.error('ROI 로드 실패:', err);
@@ -302,7 +304,7 @@ export default function Monitoring() {
   const handleDeleteRoi = async (roiId) => {
     try {
       await deleteRoi(roiId);
-      setRois((prev) => prev.filter((r) => r.id !== roiId));
+      setApiRois((prev) => prev.filter((r) => r.roiId !== roiId));
     } catch (err) {
       alert(err.message ?? 'ROI 삭제에 실패했습니다.');
     }
@@ -344,29 +346,37 @@ export default function Monitoring() {
   };
 
   // 추가/수정 통합 저장
+  // 백엔드 Roi 엔티티의 NOT NULL 필드(alarmRule, muteForkliftOnly, active) 가 누락되지 않도록
+  // create 는 명세 §4.2 기본값을, update 는 기존 raw record 의 값을 채워 넘긴다.
   const handleSaveRoi = async ({ name }) => {
     if (!drawingVertices || drawingVertices.length !== 4) return;
 
     try {
       if (editingRoiId) {
-        // 수정 모드
+        const existing = apiRois.find((r) => r.roiId === editingRoiId);
         const updated = await updateRoi(editingRoiId, {
+          cameraId: existing?.cameraId ?? selectedCameraId,
           name,
           polygon: drawingVertices,
+          alarmRule: existing?.alarmRule ?? 'WORKER_ALONE_OR_INTERACTION',
+          muteForkliftOnly: existing?.muteForkliftOnly ?? true,
+          dangerDistanceThreshold: existing?.dangerDistanceThreshold ?? 150,
+          active: existing?.active ?? true,
         });
-        setRois((prev) =>
-          prev.map((r) =>
-            r.id === editingRoiId ? apiRoiToLocal(updated) : r
-          )
+        setApiRois((prev) =>
+          prev.map((r) => (r.roiId === editingRoiId ? updated : r))
         );
       } else {
-        // 추가 모드
         const created = await createRoi({
           cameraId: selectedCameraId,
           name,
           polygon: drawingVertices,
+          alarmRule: 'WORKER_ALONE_OR_INTERACTION',
+          muteForkliftOnly: true,
+          dangerDistanceThreshold: 150,
+          active: true,
         });
-        setRois((prev) => [...prev, apiRoiToLocal(created)]);
+        setApiRois((prev) => [...prev, created]);
       }
       setDrawingVertices(null);
       setEditingRoiId(null);

@@ -48,6 +48,11 @@ export async function apiRequest(path, { method = 'GET', body, query } = {}) {
     throw new ApiError('NETWORK', '네트워크 오류가 발생했습니다.', 0);
   }
 
+  // 204 No Content (DELETE, PUT 등) 는 본문이 없어 json 파싱이 실패한다 → null 반환.
+  if (res.status === 204) {
+    return null;
+  }
+
   let payload;
   try {
     payload = await res.json();

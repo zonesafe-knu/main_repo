@@ -60,12 +60,7 @@ export default function AddCameraModal({
       alert('공장을 먼저 선택해주세요');
       return;
     }
-    // 모든 공장 합쳐서 카메라 이름 중복 검사
-    const allCameraNames = sites.flatMap((s) => s.cameras.map((c) => c.name));
-    if (allCameraNames.includes(trimmed)) {
-      alert('이미 존재하는 카메라 이름입니다');
-      return;
-    }
+    // 카메라 이름 중복은 백엔드가 허용하므로 프론트에서 막지 않음.
     onAddCamera?.(selectedSite, trimmed);
     onClose?.();
   };

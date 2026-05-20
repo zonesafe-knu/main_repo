@@ -1,11 +1,41 @@
-// 알람 API (명세 §5 기반 mock).
-// 백엔드 연동 시 각 함수 본문을 apiRequest 호출로 교체:
-//   fetchAlarms     → apiRequest('/alarms', { query: { ... } })
-//   ackAlarm        → apiRequest(`/alarms/${alarmId}/ack`, { method: 'PATCH' })
-//   resolveAlarm    → apiRequest(`/alarms/${alarmId}/resolve`, { method: 'PATCH', body: { comment } })
-//   bulkAckAlarms   → apiRequest('/alarms/bulk-ack', { method: 'POST', body: { alarmIds } })
+// 알람 API (명세 §5). 백엔드 /api/v1/alarms 호출.
 
-// occurredAt 은 KST 현지시각을 UTC ISO-8601 로 변환해 저장 (명세 예시와 동일).
+import { apiRequest } from './client';
+
+// ===== 5.1 알람 목록 조회 (필터/페이징) =====
+export async function fetchAlarms({
+  cameraId,
+  roiId,
+  severity,
+  type,
+  status,
+  from,
+  to,
+  page = 0,
+  size = 20,
+  sort = 'occurredAt,desc',
+} = {}) {
+  return apiRequest('/alarms', {
+    query: { cameraId, roiId, severity, type, status, from, to, page, size, sort },
+  });
+}
+
+// ===== 5.3 알람 확인(ACK) =====
+export async function ackAlarm(alarmId) {
+  return apiRequest(`/alarms/${alarmId}/ack`, { method: 'PATCH', body: {} });
+}
+
+// ===== 5.3 알람 해제(RESOLVED) =====
+export async function resolveAlarm(alarmId, comment = '') {
+  return apiRequest(`/alarms/${alarmId}/resolve`, { method: 'PATCH', body: { comment } });
+}
+
+// ===== 5.4 알람 일괄 처리 =====
+export async function bulkAckAlarms(alarmIds) {
+  return apiRequest('/alarms/bulk-ack', { method: 'POST', body: { alarmIds } });
+}
+
+// ===== stats.js mock 호환용 데이터 (백엔드 /stats 구현 시 stats.js와 함께 제거) =====
 const kstToUtcIso = (localStr) => new Date(`${localStr}+09:00`).toISOString();
 
 const buildAlarm = ({
@@ -66,89 +96,6 @@ const MOCK_ALARMS = [
   buildAlarm({ alarmId: 1005, cameraId: 3, cameraName: '3번 출하장',   severity: 'DANGER', type: 'WORKER_FORKLIFT_PROXIMITY', message: '작업자-지게차 근접 (거리 80px)',  occurredAtKst: '2026-04-26T16:18:25', clipId: 4987 }),
 ];
 
-const MOCK_LATENCY_MS = 350;
-
-const compareBy = (field, dir) => (a, b) => {
-  const av = a[field], bv = b[field];
-  const cmp = av < bv ? -1 : av > bv ? 1 : 0;
-  return dir === 'asc' ? cmp : -cmp;
-};
-
-export async function fetchAlarms({
-  cameraId,
-  roiId,
-  severity,
-  type,
-  status,
-  from,
-  to,
-  page = 0,
-  size = 20,
-  sort = 'occurredAt,desc',
-} = {}) {
-  await new Promise((r) => setTimeout(r, MOCK_LATENCY_MS));
-
-  const fromMs = from ? Date.parse(from) : -Infinity;
-  const toMs = to ? Date.parse(to) : Infinity;
-
-  const filtered = MOCK_ALARMS.filter((a) => {
-    if (cameraId !== undefined && cameraId !== null && a.cameraId !== cameraId) return false;
-    if (roiId !== undefined && roiId !== null && a.roiId !== roiId) return false;
-    if (severity && a.severity !== severity) return false;
-    if (type && a.type !== type) return false;
-    if (status && a.status !== status) return false;
-    const t = Date.parse(a.occurredAt);
-    if (t < fromMs || t > toMs) return false;
-    return true;
-  });
-
-  const [sortField, sortDir = 'desc'] = sort.split(',');
-  filtered.sort(compareBy(sortField, sortDir));
-
-  const totalElements = filtered.length;
-  const totalPages = totalElements === 0 ? 0 : Math.ceil(totalElements / size);
-  const start = page * size;
-  const content = filtered.slice(start, start + size);
-
-  return { content, page, size, totalElements, totalPages };
-}
-
-// ===== 알람 상태 변경 (명세 §5.3 / §5.4) =====
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-export async function ackAlarm(alarmId) {
-  await sleep(MOCK_LATENCY_MS / 2);
-  const target = MOCK_ALARMS.find((a) => a.alarmId === alarmId);
-  if (!target) return null;
-  if (target.status === 'NEW') target.status = 'ACK';
-  return { ...target };
-}
-
-export async function resolveAlarm(alarmId, comment = '') {
-  await sleep(MOCK_LATENCY_MS / 2);
-  const target = MOCK_ALARMS.find((a) => a.alarmId === alarmId);
-  if (!target) return null;
-  target.status = 'RESOLVED';
-  target.resolveComment = comment;
-  return { ...target };
-}
-
-// mock 전용 — 다른 mock(stats 등)이 같은 데이터로 집계할 수 있게 노출.
-// 백엔드 연동 시 stats 쪽 mock 자체가 사라지므로 이 export 도 함께 제거.
 export function _getMockAlarms() {
   return MOCK_ALARMS;
-}
-
-export async function bulkAckAlarms(alarmIds) {
-  await sleep(MOCK_LATENCY_MS);
-  let acked = 0;
-  for (const id of alarmIds) {
-    const target = MOCK_ALARMS.find((a) => a.alarmId === id);
-    if (target && target.status === 'NEW') {
-      target.status = 'ACK';
-      acked += 1;
-    }
-  }
-  return { acked };
 }

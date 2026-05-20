@@ -6,14 +6,17 @@ import LiveVideoPanel from '../components/monitoring/LiveVideoPanel';
 import RoiSidebar from '../components/monitoring/RoiSidebar';
 import AddCameraModal from '../components/monitoring/AddCameraModal';
 import AddRoiModal from '../components/monitoring/AddRoiModal';
+import {
+  fetchCameras,
+  createCamera,
+  updateCamera,
+  deleteCamera as apiDeleteCamera,
+} from '../api/cameras';
 import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 import { fetchLatestDetection } from '../api/detections';
 import { fetchStatsSummary } from '../api/stats';
 
-// 백엔드 없는 동안 카메라 추가/수정/삭제 결과가 새로고침에도 유지되도록
-// localStorage 에 임시 저장. 백엔드 연동 시 이 블록 + 관련 useState 초기화 + useEffect 두 개를
-// 제거하고 fetchCameras 호출로 교체.
-const SITES_STORAGE_KEY = '__monitoring_sites_v1';
+// 카메라 목록은 백엔드에서 받아온다 (mount 시 1회). 선택한 카메라 ID 는 UX 유지 목적으로 localStorage 보관.
 const SELECTED_CAM_STORAGE_KEY = '__monitoring_selected_cam_v1';
 
 const loadFromStorage = (key, fallback) => {
@@ -30,23 +33,16 @@ const saveToStorage = (key, value) => {
   } catch { /* ignore */ }
 };
 
-const initialSites = [
-  {
-    name: '대구공장 A동',
-    cameras: [
-      { id: 1, name: '1번 라인 입구' },
-      { id: 2, name: '2번 적재구역' },
-      { id: 3, name: '3번 출하장' },
-    ],
-  },
-  {
-    name: '대구공장 B동',
-    cameras: [
-      { id: 4, name: 'B동 입구' },
-      { id: 5, name: 'B동 지게차 통로' },
-    ],
-  },
-];
+// 백엔드 카메라 응답을 사이드바가 쓰는 사이트별 그룹 구조로 변환. siteId 는 신규 등록 시 사용.
+function groupCamerasBySite(apiCameras) {
+  const map = new Map();
+  for (const c of apiCameras) {
+    const siteName = c.siteName ?? '미지정 사이트';
+    if (!map.has(siteName)) map.set(siteName, { siteId: c.siteId, cameras: [] });
+    map.get(siteName).cameras.push({ id: c.cameraId, name: c.name });
+  }
+  return Array.from(map, ([name, { siteId, cameras }]) => ({ name, siteId, cameras }));
+}
 
 const DETECTION_POLL_MS = 1500;
 const STATS_POLL_MS = 60_000;
@@ -78,17 +74,21 @@ function apiRoiToLocal(r) {
 }
 
 export default function Monitoring() {
-  // sites / selectedCameraId 는 localStorage 기반 (백엔드 없으므로)
-  const [sites, setSites] = useState(() => {
-    const loaded = loadFromStorage(SITES_STORAGE_KEY, null);
-    return Array.isArray(loaded) ? loaded : initialSites;
-  });
-  const [selectedCameraId, setSelectedCameraId] = useState(() => {
-    const loaded = loadFromStorage(SELECTED_CAM_STORAGE_KEY, null);
-    const sitesNow = loadFromStorage(SITES_STORAGE_KEY, null) ?? initialSites;
-    const camIds = sitesNow.flatMap((s) => s.cameras.map((c) => c.id));
-    return camIds.includes(loaded) ? loaded : (camIds[0] ?? null);
-  });
+  // 백엔드에서 받아온 카메라 raw 목록. rename/delete 시 기존 필드 보존을 위해 통째로 유지.
+  const [apiCameras, setApiCameras] = useState([]);
+  // 모달에서 등록한 site (아직 카메라 없음). 카메라가 추가되어 백엔드에 반영되면 자연스럽게 합쳐짐.
+  const [pendingSiteNames, setPendingSiteNames] = useState([]);
+  const sites = useMemo(() => {
+    const grouped = groupCamerasBySite(apiCameras);
+    const existing = new Set(grouped.map((g) => g.name));
+    const extras = pendingSiteNames
+      .filter((n) => !existing.has(n))
+      .map((name) => ({ name, cameras: [] }));
+    return [...grouped, ...extras];
+  }, [apiCameras, pendingSiteNames]);
+  const [selectedCameraId, setSelectedCameraId] = useState(() =>
+    loadFromStorage(SELECTED_CAM_STORAGE_KEY, null)
+  );
 
   const [rois, setRois] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -103,10 +103,30 @@ export default function Monitoring() {
   const [detection, setDetection] = useState(null);
   const [todayStats, setTodayStats] = useState(null);
 
-  // sites / selectedCameraId 변경 시 localStorage 동기화
+  // 백엔드에서 카메라 목록 로드 (mount 시 1회 + add/rename/delete 후 재호출)
+  const reloadCameras = async () => {
+    const list = await fetchCameras();
+    setApiCameras(list);
+    return list;
+  };
+
   useEffect(() => {
-    saveToStorage(SITES_STORAGE_KEY, sites);
-  }, [sites]);
+    let cancelled = false;
+    reloadCameras()
+      .then((list) => {
+        if (cancelled) return;
+        const camIds = list.map((c) => c.cameraId);
+        setSelectedCameraId((prev) =>
+          camIds.includes(prev) ? prev : (camIds[0] ?? null)
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('카메라 로드 실패:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     saveToStorage(SELECTED_CAM_STORAGE_KEY, selectedCameraId);
@@ -207,58 +227,75 @@ export default function Monitoring() {
     .flatMap((s) => s.cameras)
     .find((c) => c.id === selectedCameraId);
 
-  // ===== 카메라 CRUD (localStorage 기반, 백엔드 연동 시 cameras.js API 호출로 교체) =====
-  const handleRenameCamera = (cameraId, newName) => {
-    setSites((prev) =>
-      prev.map((site) => ({
-        ...site,
-        cameras: site.cameras.map((c) =>
-          c.id === cameraId ? { ...c, name: newName } : c
-        ),
-      }))
-    );
+  // ===== 카메라 CRUD (백엔드 연동) =====
+  const handleRenameCamera = async (cameraId, newName) => {
+    const target = apiCameras.find((c) => c.cameraId === cameraId);
+    if (!target) return;
+    try {
+      // PUT 은 전체 필드 덮어쓰기 — 기존 값을 모두 포함시키고 name 만 교체.
+      await updateCamera(cameraId, {
+        name: newName,
+        rtspUrl: target.rtspUrl,
+        siteId: target.siteId,
+        siteName: target.siteName,
+        resolution: target.resolution,
+        fps: target.fps,
+        status: target.status,
+      });
+      await reloadCameras();
+    } catch (err) {
+      alert(err.message ?? '카메라 이름 변경에 실패했습니다.');
+    }
   };
 
-  const handleDeleteCamera = (cameraId) => {
-    const newSites = sites
-      .map((site) => ({
-        ...site,
-        cameras: site.cameras.filter((c) => c.id !== cameraId),
-      }))
-      .filter((site) => site.cameras.length > 0); // 빈 공장 자동 제거
-    setSites(newSites);
-
-    if (selectedCameraId === cameraId) {
-      const firstRemaining = newSites.flatMap((s) => s.cameras)[0];
-      setSelectedCameraId(firstRemaining?.id ?? null);
+  const handleDeleteCamera = async (cameraId) => {
+    try {
+      await apiDeleteCamera(cameraId);
+      const list = await reloadCameras();
+      if (selectedCameraId === cameraId) {
+        setSelectedCameraId(list[0]?.cameraId ?? null);
+      }
+    } catch (err) {
+      alert(err.message ?? '카메라 삭제에 실패했습니다.');
     }
   };
 
   const handleCloseAddModal = () => {
-    // 등록만 하고 카메라 안 추가한 빈 공장 정리
-    setSites((prev) => prev.filter((s) => s.cameras.length > 0));
+    // 모달 닫을 때 잠정 site 정리 (카메라 미등록 상태로 닫힌 경우)
+    setPendingSiteNames([]);
     setIsAddModalOpen(false);
   };
 
+  // 새 공장은 백엔드에 별도 엔티티가 없으므로, 첫 카메라가 추가될 때 자동으로 반영됨.
+  // 여기서는 모달 드롭다운에 잠시 표시할 수 있도록 잠정 목록에 넣어둔다.
   const handleAddSite = (siteName) => {
-    setSites((prev) => [...prev, { name: siteName, cameras: [] }]);
+    setPendingSiteNames((prev) =>
+      prev.includes(siteName) ? prev : [...prev, siteName]
+    );
   };
 
-  const handleAddCamera = (siteName, cameraName) => {
-    const maxId = sites
-      .flatMap((s) => s.cameras)
-      .reduce((max, c) => Math.max(max, c.id), 0);
-    const newCamera = { id: maxId + 1, name: cameraName };
+  const handleAddCamera = async (siteName, cameraName) => {
+    // 기존 site 면 그 siteId 재사용, 새 site 면 다음 ID 자동 할당.
+    const existing = sites.find((s) => s.name === siteName);
+    const siteId =
+      existing?.siteId ??
+      Math.max(0, ...sites.map((s) => s.siteId ?? 0)) + 1;
 
-    setSites((prev) =>
-      prev.map((site) =>
-        site.name === siteName
-          ? { ...site, cameras: [...site.cameras, newCamera] }
-          : site
-      )
-    );
-
-    setSelectedCameraId(newCamera.id);
+    try {
+      const created = await createCamera({
+        name: cameraName,
+        rtspUrl: 'rtsp://placeholder',
+        siteId,
+        siteName,
+        resolution: '1920x1080',
+        fps: 30,
+      });
+      await reloadCameras();
+      setPendingSiteNames([]);
+      setSelectedCameraId(created.cameraId);
+    } catch (err) {
+      alert(err.message ?? '카메라 추가에 실패했습니다.');
+    }
   };
 
   // ===== ROI CRUD (API 호출) =====

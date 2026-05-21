@@ -428,6 +428,25 @@
   font-weight: 500;
 }
 
+.alarm-list-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-badge {
+  color: #d83030;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  animation: live-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 .alarm-list-header-right {
   display: flex;
   align-items: center;

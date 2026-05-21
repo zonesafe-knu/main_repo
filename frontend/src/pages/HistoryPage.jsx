@@ -7,6 +7,7 @@ import Header from '../components/common/Header';
 import { fetchAlarms, ackAlarm, resolveAlarm, bulkAckAlarms } from '../api/alarms';
 import { fetchCameras } from '../api/cameras';
 import { getClipStreamUrl } from '../api/clips';
+import { subscribe } from '../api/ws';
 
 registerLocale('ko', ko);
 
@@ -78,6 +79,7 @@ const HistoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [isLive, setIsLive] = useState(false);
 
   // ===== 재생기 / 선택 상태 =====
   const [selectedAlarmId, setSelectedAlarmId] = useState(null);
@@ -101,6 +103,25 @@ const HistoryPage = () => {
       .then((list) => { if (!cancelled) setCameras(list); })
       .catch(() => {});
     return () => { cancelled = true; };
+  }, []);
+
+  // ===== STOMP /topic/alarms 실시간 구독 — 새 알람 도착 시 목록 자동 갱신 =====
+  useEffect(() => {
+    let unsub = null;
+    let cancelled = false;
+    subscribe('/topic/alarms', () => {
+      if (!cancelled) setRefreshTick((t) => t + 1);
+    })
+      .then((u) => {
+        if (cancelled) u();
+        else { unsub = u; setIsLive(true); }
+      })
+      .catch(() => { if (!cancelled) setIsLive(false); });
+    return () => {
+      cancelled = true;
+      setIsLive(false);
+      if (unsub) unsub();
+    };
   }, []);
 
   // ===== 필터 변경 시 첫 페이지로 + 선택 초기화 =====
@@ -476,7 +497,10 @@ const HistoryPage = () => {
           {/* 우측: 알람 목록 테이블 */}
           <div className="alarm-list-panel">
             <div className="alarm-list-header">
-              <h4>알람 목록</h4>
+              <div className="alarm-list-header-left">
+                <h4>알람 목록</h4>
+                {isLive && <span className="live-badge" title="실시간 알람 수신 중">● LIVE</span>}
+              </div>
               <div className="alarm-list-header-right">
                 {checkedIds.size > 0 && (
                   <button

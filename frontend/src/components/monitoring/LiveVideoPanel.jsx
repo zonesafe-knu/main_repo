@@ -12,6 +12,7 @@ export default function LiveVideoPanel({
   rois = [],
   drawingVertices = null, // null = 그리기 모드 아님, 배열 = 그리기 모드
   onAddVertex,
+  detections = [], // 실시간 탐지 객체 (명세 §7/§11 DetectionFrame.objects)
 }) {
   const isDrawing = Array.isArray(drawingVertices);
   const videoAreaRef = useRef(null);
@@ -68,7 +69,7 @@ export default function LiveVideoPanel({
     onAddVertex?.([Math.round(cursorPt.x), Math.round(cursorPt.y)]);
   };
 
-  const hasContent = rois.length > 0 || isDrawing;
+  const hasContent = rois.length > 0 || isDrawing || detections.length > 0;
 
   return (
     <section className="center-video-area">
@@ -136,6 +137,24 @@ export default function LiveVideoPanel({
                 </text>
               </g>
             ))}
+
+            {/* 실시간 탐지 bbox 오버레이 — bbox: [x1, y1, x2, y2] (영상 좌표계) */}
+            {detections.map((obj, i) => {
+              const [x1, y1, x2, y2] = obj.bbox ?? [];
+              if ([x1, y1, x2, y2].some((v) => typeof v !== 'number')) return null;
+              const w = x2 - x1;
+              const h = y2 - y1;
+              return (
+                <g key={`${obj.trackId ?? 'd'}-${i}`} className={`detection detection-${obj.label}`}>
+                  <rect x={x1} y={y1} width={w} height={h} className="detection-bbox" />
+                  <rect x={x1} y={y1 - 36} width={Math.max(180, obj.label?.length * 18 + 80)} height={32} className="detection-label-bg" />
+                  <text x={x1 + 8} y={y1 - 12} className="detection-label">
+                    {obj.label}{obj.trackId != null ? ` #${obj.trackId}` : ''}
+                    {obj.confidence != null ? ` ${Math.round(obj.confidence * 100)}%` : ''}
+                  </text>
+                </g>
+              );
+            })}
 
             {/* 그리는 중인 다각형 미리보기 */}
             {isDrawing && drawingVertices.length > 0 && (

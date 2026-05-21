@@ -15,6 +15,7 @@ import {
 import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 import { fetchLatestDetection } from '../api/detections';
 import { fetchStatsSummary } from '../api/stats';
+import { subscribe } from '../api/ws';
 
 // 카메라 목록은 백엔드에서 받아온다 (mount 시 1회). 선택한 카메라 ID 는 UX 유지 목적으로 localStorage 보관.
 const SELECTED_CAM_STORAGE_KEY = '__monitoring_selected_cam_v1';
@@ -44,7 +45,6 @@ function groupCamerasBySite(apiCameras) {
   return Array.from(map, ([name, { siteId, cameras }]) => ({ name, siteId, cameras }));
 }
 
-const DETECTION_POLL_MS = 1500;
 const STATS_POLL_MS = 60_000;
 
 const formatStatusDate = (d) =>
@@ -140,26 +140,37 @@ export default function Monitoring() {
     return () => clearInterval(id);
   }, []);
 
-  // 선택된 카메라의 최신 탐지 결과 polling (백엔드 연동 시 §11 WebSocket으로 교체)
+  // 선택된 카메라의 탐지 결과 — 초기 1회 REST(latest, fps/modelVersion 포함) + STOMP 실시간 구독
   useEffect(() => {
     if (!selectedCameraId) {
       setDetection(null);
       return;
     }
     let cancelled = false;
-    const poll = async () => {
-      try {
-        const data = await fetchLatestDetection({ cameraId: selectedCameraId });
-        if (!cancelled) setDetection(data);
-      } catch {
-        /* 일시 오류는 무시하고 다음 tick에 재시도 */
-      }
-    };
-    poll();
-    const id = setInterval(poll, DETECTION_POLL_MS);
+    let unsub = null;
+
+    // 초기 스냅샷 (구독 전 화면 비지 않도록)
+    fetchLatestDetection({ cameraId: selectedCameraId })
+      .then((data) => { if (!cancelled) setDetection(data); })
+      .catch(() => { /* Redis 비어있을 수 있음 */ });
+
+    // 실시간 프레임 구독 — DetectionFrame 페이로드는 fps 미포함이라 fps 는 이전 값 유지
+    subscribe(`/topic/detections/${selectedCameraId}`, (frame) => {
+      if (cancelled) return;
+      setDetection((prev) => ({
+        cameraId: frame.cameraId,
+        frameTimestamp: frame.frameTs,
+        objects: frame.objects ?? [],
+        fps: prev?.fps ?? null,
+        modelVersion: prev?.modelVersion ?? null,
+      }));
+    })
+      .then((u) => { if (cancelled) u(); else unsub = u; })
+      .catch(() => { /* 구독 실패는 폴백 정책 없음 — 추후 재시도 */ });
+
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (unsub) unsub();
     };
   }, [selectedCameraId]);
 
@@ -404,6 +415,7 @@ export default function Monitoring() {
           rois={displayRois}
           drawingVertices={drawingVertices}
           onAddVertex={handleAddVertex}
+          detections={detection?.objects ?? []}
         />
         <RoiSidebar
           rois={visibleRois}

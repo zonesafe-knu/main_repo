@@ -6,11 +6,11 @@ import './HistoryPage.css';
 import Header from '../components/common/Header';
 import { fetchAlarms, ackAlarm, resolveAlarm, bulkAckAlarms } from '../api/alarms';
 import { fetchCameras } from '../api/cameras';
+import { getClipStreamUrl } from '../api/clips';
 
 registerLocale('ko', ko);
 
 const PAGE_SIZE = 20;
-const SAMPLE_VIDEO = '/videos/sample.mp4';
 
 const SEVERITY_BADGE_CLASS = { INFO: 'info', WARN: 'warning', DANGER: 'danger' };
 const SEVERITY_LABEL = { INFO: 'Info', WARN: 'Warning', DANGER: 'Danger' };
@@ -97,7 +97,7 @@ const HistoryPage = () => {
   // ===== 카메라 목록 (마운트 시 1회) =====
   useEffect(() => {
     let cancelled = false;
-    fetchCameras({ status: 'ONLINE' })
+    fetchCameras()
       .then((list) => { if (!cancelled) setCameras(list); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -291,7 +291,7 @@ const HistoryPage = () => {
     });
   };
 
-  const videoSrc = selectedAlarm ? SAMPLE_VIDEO : '';
+  const videoSrc = selectedAlarm?.clipId ? getClipStreamUrl(selectedAlarm.clipId) : '';
   const progressPercent = clipDuration > 0 ? (clipTime / clipDuration) * 100 : 0;
   const totalPages = pageInfo.totalPages;
   const visiblePages = useMemo(() => {
@@ -421,46 +421,52 @@ const HistoryPage = () => {
                   </div>
                 </div>
 
-                <div className="video-screen" onClick={togglePlay}>
-                  <video
-                    ref={videoRef}
-                    src={videoSrc}
-                    className="video-player"
-                    preload="auto"
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => setIsPlaying(false)}
-                  />
-                  <button
-                    type="button"
-                    className={`video-overlay-btn ${isPlaying ? 'playing' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-                    aria-label={isPlaying ? '일시정지' : '재생'}
-                  >
-                    {isPlaying ? (
-                      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                    )}
-                  </button>
-                </div>
+                {selectedAlarm.clipId ? (
+                  <>
+                    <div className="video-screen" onClick={togglePlay}>
+                      <video
+                        ref={videoRef}
+                        src={videoSrc}
+                        className="video-player"
+                        preload="auto"
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onEnded={() => setIsPlaying(false)}
+                      />
+                      <button
+                        type="button"
+                        className={`video-overlay-btn ${isPlaying ? 'playing' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                        aria-label={isPlaying ? '일시정지' : '재생'}
+                      >
+                        {isPlaying ? (
+                          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        )}
+                      </button>
+                    </div>
 
-                <div className="video-controls">
-                  <div className="progress-bar" onClick={handleSeek}>
-                    <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
-                  </div>
-                  <div className="time-labels">
-                    <span>{formatClipTime(clipTime)}</span>
-                    <span>{formatClipTime(clipDuration)}</span>
-                  </div>
-                  <div className="play-btn-wrapper">
-                    <button className="play-btn" onClick={togglePlay}>
-                      {isPlaying ? '❚❚ 일시정지' : '▶ 재생'}
-                    </button>
-                  </div>
-                </div>
+                    <div className="video-controls">
+                      <div className="progress-bar" onClick={handleSeek}>
+                        <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
+                      </div>
+                      <div className="time-labels">
+                        <span>{formatClipTime(clipTime)}</span>
+                        <span>{formatClipTime(clipDuration)}</span>
+                      </div>
+                      <div className="play-btn-wrapper">
+                        <button className="play-btn" onClick={togglePlay}>
+                          {isPlaying ? '❚❚ 일시정지' : '▶ 재생'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="playback-empty">이 알람에는 저장된 클립이 없습니다.</div>
+                )}
               </>
             ) : (
               <div className="playback-empty">선택된 알람이 없습니다.</div>

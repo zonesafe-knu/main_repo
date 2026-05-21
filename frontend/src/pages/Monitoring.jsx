@@ -11,6 +11,7 @@ import {
   createCamera,
   updateCamera,
   deleteCamera as apiDeleteCamera,
+  setCameraStatus,
 } from '../api/cameras';
 import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 import { fetchLatestDetection } from '../api/detections';
@@ -298,6 +299,21 @@ export default function Monitoring() {
     }
   };
 
+  // 데모용 — 카메라 상태 수동 토글. WebSocket broadcast로 사이드바 자동 갱신되지만, 즉시 반응 위해 로컬에도 반영.
+  const handleToggleCameraStatus = async (cameraId) => {
+    const current = apiCameras.find((c) => c.cameraId === cameraId);
+    if (!current) return;
+    const next = current.status === 'ONLINE' ? 'OFFLINE' : 'ONLINE';
+    try {
+      await setCameraStatus(cameraId, next);
+      setApiCameras((prev) =>
+        prev.map((c) => (c.cameraId === cameraId ? { ...c, status: next } : c))
+      );
+    } catch (err) {
+      alert(err.message ?? '카메라 상태 전환에 실패했습니다.');
+    }
+  };
+
   const handleDeleteCamera = async (cameraId) => {
     try {
       await apiDeleteCamera(cameraId);
@@ -445,6 +461,7 @@ export default function Monitoring() {
           onAddCamera={() => setIsAddModalOpen(true)}
           onRenameCamera={handleRenameCamera}
           onDeleteCamera={handleDeleteCamera}
+          onToggleCameraStatus={handleToggleCameraStatus}
         />
         <LiveVideoPanel
           cameraName={selectedCamera?.name ?? ''}

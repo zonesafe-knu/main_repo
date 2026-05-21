@@ -9,6 +9,7 @@ export default function CameraSidebar({
   onAddCamera,
   onRenameCamera,
   onDeleteCamera,
+  onToggleCameraStatus,
 }) {
   const [searchText, setSearchText] = useState('');
 
@@ -59,6 +60,7 @@ export default function CameraSidebar({
                   onSelect={onSelectCamera}
                   onRename={onRenameCamera}
                   onDelete={onDeleteCamera}
+                  onToggleStatus={onToggleCameraStatus}
                   allCameraNames={allCameraNames}
                 />
               ))}

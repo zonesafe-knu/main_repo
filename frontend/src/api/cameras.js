@@ -19,3 +19,11 @@ export async function updateCamera(cameraId, payload) {
 export async function deleteCamera(cameraId) {
   return apiRequest(`/cameras/${cameraId}`, { method: 'DELETE' });
 }
+
+// 데모용 — 백엔드 internal API 직접 호출 (운영에서는 헬스체커가 자동 갱신)
+export async function setCameraStatus(cameraId, status) {
+  return apiRequest(`/internal/cameras/${cameraId}/status`, {
+    method: 'PATCH',
+    body: { status },
+  });
+}

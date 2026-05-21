@@ -7,6 +7,7 @@ export default function CameraItem({
   onSelect,
   onRename,
   onDelete,
+  onToggleStatus,
   allCameraNames = [],
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -148,6 +149,19 @@ export default function CameraItem({
             >
               이름 변경
             </button>
+            {onToggleStatus && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  onToggleStatus(camera.id);
+                }}
+              >
+                {camera.status === 'ONLINE' ? 'OFFLINE 전환' : 'ONLINE 전환'}
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"

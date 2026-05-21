@@ -148,15 +148,20 @@ export default function Monitoring() {
     }
     let cancelled = false;
     let unsub = null;
+    // WebSocket 메시지가 먼저 도착한 경우, 뒤늦게 도착한 REST 스냅샷으로 덮어쓰지 않도록 가드.
+    let wsReceived = false;
 
     // 초기 스냅샷 (구독 전 화면 비지 않도록)
     fetchLatestDetection({ cameraId: selectedCameraId })
-      .then((data) => { if (!cancelled) setDetection(data); })
+      .then((data) => {
+        if (!cancelled && !wsReceived) setDetection(data);
+      })
       .catch(() => { /* Redis 비어있을 수 있음 */ });
 
     // 실시간 프레임 구독 — DetectionFrame 페이로드는 fps 미포함이라 fps 는 이전 값 유지
     subscribe(`/topic/detections/${selectedCameraId}`, (frame) => {
       if (cancelled) return;
+      wsReceived = true;
       setDetection((prev) => ({
         cameraId: frame.cameraId,
         frameTimestamp: frame.frameTs,

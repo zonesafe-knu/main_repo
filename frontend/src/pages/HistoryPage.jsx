@@ -4,6 +4,7 @@ import { ko } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
 import './HistoryPage.css';
 import Header from '../components/common/Header';
+import AlarmDetailModal from '../components/history/AlarmDetailModal';
 import { fetchAlarms, ackAlarm, resolveAlarm, bulkAckAlarms } from '../api/alarms';
 import { fetchCameras } from '../api/cameras';
 import { getClipStreamUrl } from '../api/clips';
@@ -83,6 +84,7 @@ const HistoryPage = () => {
 
   // ===== 재생기 / 선택 상태 =====
   const [selectedAlarmId, setSelectedAlarmId] = useState(null);
+  const [detailAlarmId, setDetailAlarmId] = useState(null);
   const [checkedIds, setCheckedIds] = useState(() => new Set());
   const [actionPendingId, setActionPendingId] = useState(null);
   const [bulkPending, setBulkPending] = useState(false);
@@ -424,6 +426,11 @@ const HistoryPage = () => {
                     <button
                       type="button"
                       className="action-btn"
+                      onClick={() => setDetailAlarmId(selectedAlarm.alarmId)}
+                    >상세</button>
+                    <button
+                      type="button"
+                      className="action-btn"
                       onClick={() => handleAck(selectedAlarm.alarmId)}
                       disabled={
                         selectedAlarm.status !== 'NEW' ||
@@ -590,6 +597,11 @@ const HistoryPage = () => {
                             <button
                               type="button"
                               className="row-action-btn"
+                              onClick={() => setDetailAlarmId(alarm.alarmId)}
+                            >상세</button>
+                            <button
+                              type="button"
+                              className="row-action-btn"
                               onClick={() => handleAck(alarm.alarmId)}
                               disabled={alarm.status !== 'NEW' || pending}
                             >확인</button>
@@ -631,6 +643,14 @@ const HistoryPage = () => {
 
         </div>
       </div>
+
+      {detailAlarmId != null && (
+        <AlarmDetailModal
+          alarmId={detailAlarmId}
+          onClose={() => setDetailAlarmId(null)}
+          onActionDone={triggerRefresh}
+        />
+      )}
     </div>
   );
 };

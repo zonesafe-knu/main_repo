@@ -20,6 +20,11 @@ export async function fetchAlarms({
   });
 }
 
+// ===== 5.2 알람 상세 조회 =====
+export async function fetchAlarm(alarmId) {
+  return apiRequest(`/alarms/${alarmId}`);
+}
+
 // ===== 5.3 알람 확인(ACK) =====
 export async function ackAlarm(alarmId) {
   return apiRequest(`/alarms/${alarmId}/ack`, { method: 'PATCH', body: {} });

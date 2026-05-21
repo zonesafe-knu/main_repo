@@ -1,0 +1,83 @@
+.alarm-toaster {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 2000;
+  pointer-events: none; /* 배경 클릭 통과 — 각 토스트는 자체 활성화 */
+}
+
+.alarm-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: stretch;
+  background: #2b2b2b;
+  color: #fff;
+  border-radius: 6px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+  min-width: 320px;
+  max-width: 380px;
+  overflow: hidden;
+  animation: alarm-toast-in 0.25s ease-out;
+  border-left: 4px solid #888;
+}
+
+@keyframes alarm-toast-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.alarm-toast-badge {
+  flex-shrink: 0;
+  padding: 12px 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.alarm-toast-body {
+  flex: 1;
+  padding: 11px 12px;
+  min-width: 0;
+}
+
+.alarm-toast-message {
+  font-size: 0.9rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alarm-toast-meta {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  color: #bbb;
+}
+
+.alarm-toast-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 0 12px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.alarm-toast-close:hover { color: #fff; }
+
+/* ===== 심각도별 컬러 바 ===== */
+.alarm-toast.severity-info    { border-left-color: #2196f3; }
+.alarm-toast.severity-info    .alarm-toast-badge { color: #64b5f6; }
+
+.alarm-toast.severity-warn    { border-left-color: #ff9800; }
+.alarm-toast.severity-warn    .alarm-toast-badge { color: #ffb74d; }
+
+.alarm-toast.severity-danger  { border-left-color: #e53935; }
+.alarm-toast.severity-danger  .alarm-toast-badge { color: #ef5350; }

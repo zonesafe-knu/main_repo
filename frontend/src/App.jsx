@@ -4,11 +4,13 @@ import Login from "./pages/Login";
 import Monitoring from "./pages/Monitoring";
 import HistoryPage from "./pages/HistoryPage";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import AlarmToaster from "./components/common/AlarmToaster";
 import "./App.css";
 
 function App() {
   return (
     <Router>
+      <AlarmToaster />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route

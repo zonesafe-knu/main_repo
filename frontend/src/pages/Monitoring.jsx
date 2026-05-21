@@ -40,7 +40,7 @@ function groupCamerasBySite(apiCameras) {
   for (const c of apiCameras) {
     const siteName = c.siteName ?? '미지정 사이트';
     if (!map.has(siteName)) map.set(siteName, { siteId: c.siteId, cameras: [] });
-    map.get(siteName).cameras.push({ id: c.cameraId, name: c.name });
+    map.get(siteName).cameras.push({ id: c.cameraId, name: c.name, status: c.status });
   }
   return Array.from(map, ([name, { siteId, cameras }]) => ({ name, siteId, cameras }));
 }
@@ -139,6 +139,38 @@ export default function Monitoring() {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // 카메라별 status 실시간 구독 — apiCameras id 목록 변경 시(추가/삭제)에만 재구독
+  const cameraIdsKey = useMemo(
+    () => apiCameras.map((c) => c.cameraId).sort((a, b) => a - b).join(','),
+    [apiCameras]
+  );
+  useEffect(() => {
+    if (!cameraIdsKey) return;
+    const ids = cameraIdsKey.split(',').map(Number);
+    let cancelled = false;
+    const unsubs = [];
+
+    ids.forEach((id) => {
+      subscribe(`/topic/cameras/${id}/status`, (event) => {
+        if (cancelled) return;
+        setApiCameras((prev) =>
+          prev.map((c) =>
+            c.cameraId === event.cameraId
+              ? { ...c, status: event.status, lastHeartbeat: event.lastHeartbeat ?? c.lastHeartbeat }
+              : c
+          )
+        );
+      })
+        .then((u) => { if (cancelled) u(); else unsubs.push(u); })
+        .catch(() => {});
+    });
+
+    return () => {
+      cancelled = true;
+      unsubs.forEach((u) => u());
+    };
+  }, [cameraIdsKey]);
 
   // 선택된 카메라의 탐지 결과 — 초기 1회 REST(latest, fps/modelVersion 포함) + STOMP 실시간 구독
   useEffect(() => {

@@ -117,6 +117,10 @@ export default function CameraItem({
       className={`camera-item ${isSelected ? 'active' : ''}`}
       onClick={() => onSelect?.(camera.id)}
     >
+      <span
+        className={`camera-status-dot status-${(camera.status ?? 'UNKNOWN').toLowerCase()}`}
+        title={camera.status ?? '상태 미확인'}
+      />
       <span className="camera-item-name">{camera.name}</span>
 
       <div className="camera-item-menu" ref={menuRef}>

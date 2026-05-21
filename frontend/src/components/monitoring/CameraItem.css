@@ -29,6 +29,25 @@
   flex: 1;
 }
 
+/* ===== 실시간 카메라 상태 점 인디케이터 ===== */
+.camera-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background: #bbb; /* fallback (UNKNOWN) */
+  flex-shrink: 0;
+}
+.camera-status-dot.status-online {
+  background: #27ae60;
+  box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.18);
+}
+.camera-status-dot.status-offline {
+  background: #c0392b;
+  opacity: 0.7;
+}
+
 .camera-item-menu {
   position: relative;
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { fetchAlarm, ackAlarm, resolveAlarm } from '../../api/alarms';
+import { fetchAlarm, resolveAlarm } from '../../api/alarms';
+import { publish } from '../../api/ws';
 import './AlarmDetailModal.css';
 
 const SEVERITY_LABEL = { INFO: 'Info', WARN: 'Warning', DANGER: 'Danger' };
@@ -47,15 +48,11 @@ const AlarmDetailModal = ({ alarmId, onClose, onActionDone }) => {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleAck = async () => {
-    setActionPending(true);
-    try {
-      const updated = await ackAlarm(alarmId);
-      setAlarm(updated);
-      onActionDone?.();
-    } finally {
-      setActionPending(false);
-    }
+  // STOMP fire-and-forget — broadcast 가 부모 HistoryPage 의 alarms 도 동기화
+  const handleAck = () => {
+    publish('/app/ack', { alarmId });
+    setAlarm((prev) => (prev ? { ...prev, status: 'ACK' } : prev));
+    onActionDone?.();
   };
 
   const handleResolve = async () => {

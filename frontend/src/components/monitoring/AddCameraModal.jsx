@@ -11,8 +11,10 @@ export default function AddCameraModal({
   const [isAddingSite, setIsAddingSite] = useState(sites.length === 0);
   const [newSiteName, setNewSiteName] = useState('');
   const [cameraName, setCameraName] = useState('');
+  const [videoFile, setVideoFile] = useState(null);
   const newSiteInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -61,8 +63,22 @@ export default function AddCameraModal({
       return;
     }
     // 카메라 이름 중복은 백엔드가 허용하므로 프론트에서 막지 않음.
-    onAddCamera?.(selectedSite, trimmed);
+    onAddCamera?.(selectedSite, trimmed, videoFile);
     onClose?.();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setVideoFile(null);
+      return;
+    }
+    if (file.size > 500 * 1024 * 1024) {
+      alert('영상 파일은 500MB 이하여야 합니다.');
+      e.target.value = '';
+      return;
+    }
+    setVideoFile(file);
   };
 
   const canSubmit = selectedSite && !isAddingSite && cameraName.trim();
@@ -176,6 +192,23 @@ export default function AddCameraModal({
                 공장을 먼저 선택하거나 등록해야 합니다.
               </p>
             )}
+          </div>
+
+          {/* 3단계: 영상 파일 (선택) */}
+          <div className="form-group">
+            <label>영상 파일 (선택)</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/mp4,.mp4"
+              className="form-input"
+              onChange={handleFileChange}
+            />
+            <p className="form-helper">
+              {videoFile
+                ? `선택됨: ${videoFile.name} (${(videoFile.size / 1024 / 1024).toFixed(1)}MB)`
+                : 'mp4 파일을 선택하면 등록 후 자동으로 이 카메라에 연결됩니다. (최대 500MB)'}
+            </p>
           </div>
         </div>
 

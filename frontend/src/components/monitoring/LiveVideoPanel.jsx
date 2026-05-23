@@ -13,6 +13,7 @@ export default function LiveVideoPanel({
   drawingVertices = null, // null = 그리기 모드 아님, 배열 = 그리기 모드
   onAddVertex,
   detections = [], // 실시간 탐지 객체 (명세 §7/§11 DetectionFrame.objects)
+  videoSrc = null, // 카메라에 연결된 영상 URL (null 이면 영상 없음 placeholder)
 }) {
   const isDrawing = Array.isArray(drawingVertices);
   const videoAreaRef = useRef(null);
@@ -93,15 +94,19 @@ export default function LiveVideoPanel({
             ✕ 닫기 (ESC)
           </button>
         )}
-        {/* 백엔드 연동 시: cameras.{cameraId}.streamUrl(HLS) 로 교체 (명세 §3.5) */}
-        <video
-          className="live-video"
-          src="/videos/sample.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-        />
+        {videoSrc ? (
+          <video
+            key={videoSrc}
+            className="live-video"
+            src={videoSrc}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        ) : (
+          <div className="live-video-empty">이 카메라에 연결된 영상이 없습니다.</div>
+        )}
 
         {hasContent && (
           <svg

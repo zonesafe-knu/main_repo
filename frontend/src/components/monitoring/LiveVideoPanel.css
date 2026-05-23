@@ -41,6 +41,17 @@
   background-color: #000;
 }
 
+.live-video-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 0.95rem;
+  background-color: #1a1a1a;
+}
+
 /* 네이티브 풀스크린 진입 시 검은 여백 처리 */
 .video-player-placeholder:fullscreen {
   background-color: #000;

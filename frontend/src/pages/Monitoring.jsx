@@ -17,6 +17,7 @@ import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 import { fetchLatestDetection } from '../api/detections';
 import { fetchStatsSummary } from '../api/stats';
 import { subscribe } from '../api/ws';
+import { uploadVideo, fetchVideos, getVideoStreamUrl } from '../api/videos';
 
 // 카메라 목록은 백엔드에서 받아온다 (mount 시 1회). 선택한 카메라 ID 는 UX 유지 목적으로 localStorage 보관.
 const SELECTED_CAM_STORAGE_KEY = '__monitoring_selected_cam_v1';
@@ -105,6 +106,8 @@ export default function Monitoring() {
   const [now, setNow] = useState(() => new Date());
   const [detection, setDetection] = useState(null);
   const [todayStats, setTodayStats] = useState(null);
+  // 선택된 카메라에 연결된 최신 영상 URL (없으면 null)
+  const [currentVideoUrl, setCurrentVideoUrl] = useState(null);
 
   // 백엔드에서 카메라 목록 로드 (mount 시 1회 + add/rename/delete 후 재호출)
   const reloadCameras = async () => {
@@ -140,6 +143,23 @@ export default function Monitoring() {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // 선택된 카메라의 최신 업로드 영상 URL fetch (cameraContext 기준)
+  useEffect(() => {
+    if (!selectedCameraId) {
+      setCurrentVideoUrl(null);
+      return;
+    }
+    let cancelled = false;
+    fetchVideos({ cameraContext: selectedCameraId, size: 1, sort: 'uploadedAt,desc' })
+      .then((page) => {
+        if (cancelled) return;
+        const latest = page?.content?.[0];
+        setCurrentVideoUrl(latest ? getVideoStreamUrl(latest.videoId) : null);
+      })
+      .catch(() => { if (!cancelled) setCurrentVideoUrl(null); });
+    return () => { cancelled = true; };
+  }, [selectedCameraId]);
 
   // 카메라별 status 실시간 구독 — apiCameras id 목록 변경 시(추가/삭제)에만 재구독
   const cameraIdsKey = useMemo(
@@ -340,7 +360,7 @@ export default function Monitoring() {
     );
   };
 
-  const handleAddCamera = async (siteName, cameraName) => {
+  const handleAddCamera = async (siteName, cameraName, videoFile) => {
     // 기존 site 면 그 siteId 재사용, 새 site 면 다음 ID 자동 할당.
     const existing = sites.find((s) => s.name === siteName);
     const siteId =
@@ -356,6 +376,20 @@ export default function Monitoring() {
         resolution: '1920x1080',
         fps: 30,
       });
+
+      // 영상 파일이 있으면 이 카메라에 연결해 업로드 (cameraContext)
+      if (videoFile) {
+        try {
+          await uploadVideo(videoFile, {
+            name: `${cameraName} 영상`,
+            siteId,
+            cameraContext: created.cameraId,
+          });
+        } catch (err) {
+          alert(`카메라는 등록됐지만 영상 업로드에 실패했습니다: ${err.message ?? ''}`);
+        }
+      }
+
       await reloadCameras();
       setPendingSiteNames([]);
       setSelectedCameraId(created.cameraId);
@@ -470,6 +504,7 @@ export default function Monitoring() {
           drawingVertices={drawingVertices}
           onAddVertex={handleAddVertex}
           detections={detection?.objects ?? []}
+          videoSrc={currentVideoUrl}
         />
         <RoiSidebar
           rois={visibleRois}

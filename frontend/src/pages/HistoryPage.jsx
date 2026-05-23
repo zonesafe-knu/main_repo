@@ -5,10 +5,10 @@ import 'react-datepicker/dist/react-datepicker.css';
 import './HistoryPage.css';
 import Header from '../components/common/Header';
 import AlarmDetailModal from '../components/history/AlarmDetailModal';
-import { fetchAlarms, ackAlarm, resolveAlarm, bulkAckAlarms } from '../api/alarms';
+import { fetchAlarms, resolveAlarm, bulkAckAlarms } from '../api/alarms';
 import { fetchCameras } from '../api/cameras';
 import { getClipStreamUrl } from '../api/clips';
-import { subscribe } from '../api/ws';
+import { subscribe, publish } from '../api/ws';
 
 registerLocale('ko', ko);
 
@@ -122,6 +122,26 @@ const HistoryPage = () => {
     return () => {
       cancelled = true;
       setIsLive(false);
+      if (unsub) unsub();
+    };
+  }, []);
+
+  // ===== STOMP /topic/alarms/status 구독 — ACK/Resolve/Bulk-ACK 의 상태 변경을 다른 세션과 동기화 =====
+  useEffect(() => {
+    let unsub = null;
+    let cancelled = false;
+    subscribe('/topic/alarms/status', (evt) => {
+      if (cancelled || !evt?.alarmId) return;
+      setAlarms((prev) => prev.map((a) =>
+        a.alarmId === evt.alarmId
+          ? { ...a, status: evt.status, comment: evt.comment ?? a.comment }
+          : a
+      ));
+    })
+      .then((u) => { if (cancelled) u(); else unsub = u; })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
       if (unsub) unsub();
     };
   }, []);
@@ -250,14 +270,13 @@ const HistoryPage = () => {
   // ===== 액션 핸들러 =====
   const triggerRefresh = () => setRefreshTick((t) => t + 1);
 
-  const handleAck = async (alarmId) => {
-    setActionPendingId(alarmId);
-    try {
-      await ackAlarm(alarmId);
-      triggerRefresh();
-    } finally {
-      setActionPendingId(null);
-    }
+  // STOMP /app/ack 로 fire-and-forget — 백엔드가 받은 후 /topic/alarms/status 로 broadcast 하므로
+  // 다른 클라이언트도 자동 동기화. 로컬은 optimistic 으로 즉시 갱신.
+  const handleAck = (alarmId) => {
+    publish('/app/ack', { alarmId });
+    setAlarms((prev) => prev.map((a) =>
+      a.alarmId === alarmId ? { ...a, status: 'ACK' } : a
+    ));
   };
 
   const handleResolve = async (alarmId) => {

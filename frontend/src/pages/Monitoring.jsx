@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import './Monitoring.css';
 import Header from '../components/common/Header';
 import CameraSidebar from '../components/monitoring/CameraSidebar';
@@ -48,6 +48,26 @@ function groupCamerasBySite(apiCameras) {
 }
 
 const STATS_POLL_MS = 60_000;
+
+// detection 버퍼 최대 길이 (30fps × 약 20초). 메모리 보호용.
+const DETECTION_BUFFER_MAX = 600;
+
+// DetectionFrame → { videoTime: 영상 내 시각(초), exact: true|false }
+//  1순위(exact=true): 백엔드가 명시적으로 넣어주는 videoTimeSec (영상 내 0-based 초)
+//  2순위(fallback, exact=false): 첫 프레임의 frameTs 를 t=0 으로 두고 상대 시간을 계산.
+//    한계 — 백엔드 분석 지연이 그대로 offset 으로 남아 sync 가 어긋남.
+//    백엔드가 videoTimeSec 을 보내주기 시작하면 자동으로 1순위로 전환된다.
+function computeVideoTime(frame, originRef) {
+  if (typeof frame?.videoTimeSec === 'number') {
+    return { videoTime: frame.videoTimeSec, exact: true };
+  }
+  const tsStr = frame?.frameTs ?? frame?.frameTimestamp;
+  if (!tsStr) return null;
+  const ms = new Date(tsStr).getTime();
+  if (!Number.isFinite(ms)) return null;
+  if (originRef.current == null) originRef.current = ms;
+  return { videoTime: (ms - originRef.current) / 1000, exact: false };
+}
 
 const formatStatusDate = (d) =>
   `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}(GMT+9)`;
@@ -104,7 +124,15 @@ export default function Monitoring() {
 
   // ===== 실시간 상태 (시각/탐지/통계) =====
   const [now, setNow] = useState(() => new Date());
-  const [detection, setDetection] = useState(null);
+  // 탐지 결과 — 영상 currentTime 기반 sync 를 위해 ref 버퍼로 관리.
+  // WS/REST 가 도착하면 setState 가 아니라 버퍼에 push 만 하고,
+  // LiveVideoPanel 내부 rAF 루프가 영상 currentTime 에 맞는 항목을 골라낸다.
+  const detectionBufferRef = useRef([]);
+  const videoTimeOriginRef = useRef(null);
+  // rAF 루프가 골라낸 "현재 영상 시각 기준" 탐지 결과 — status bar 표시용
+  const [activeDetection, setActiveDetection] = useState(null);
+  // fps / modelVersion — 초기 REST 응답 1회로 채움 (WS DetectionFrame 에는 없음)
+  const [detectionMeta, setDetectionMeta] = useState({ fps: null, modelVersion: null });
   const [todayStats, setTodayStats] = useState(null);
   // 선택된 카메라에 연결된 최신 영상 URL (없으면 null)
   const [currentVideoUrl, setCurrentVideoUrl] = useState(null);
@@ -193,35 +221,45 @@ export default function Monitoring() {
     };
   }, [cameraIdsKey]);
 
-  // 선택된 카메라의 탐지 결과 — 초기 1회 REST(latest, fps/modelVersion 포함) + STOMP 실시간 구독
+  // 선택된 카메라의 탐지 결과 — 초기 1회 REST + STOMP 실시간 구독을 모두 ref 버퍼에 적재.
+  // 버퍼에서 골라낸 "현재 영상 시각용" detection 은 LiveVideoPanel 의 rAF 루프가 setActiveDetection 으로 알려줌.
   useEffect(() => {
-    if (!selectedCameraId) {
-      setDetection(null);
-      return;
-    }
+    // 카메라 전환 시 버퍼/origin 초기화
+    detectionBufferRef.current = [];
+    videoTimeOriginRef.current = null;
+    setActiveDetection(null);
+    setDetectionMeta({ fps: null, modelVersion: null });
+
+    if (!selectedCameraId) return;
     let cancelled = false;
     let unsub = null;
-    // WebSocket 메시지가 먼저 도착한 경우, 뒤늦게 도착한 REST 스냅샷으로 덮어쓰지 않도록 가드.
-    let wsReceived = false;
 
-    // 초기 스냅샷 (구독 전 화면 비지 않도록)
+    // 초기 스냅샷 — 메타데이터 채우고, 가능하면 첫 프레임도 버퍼에 적재
     fetchLatestDetection({ cameraId: selectedCameraId })
       .then((data) => {
-        if (!cancelled && !wsReceived) setDetection(data);
+        if (cancelled || !data) return;
+        setDetectionMeta({ fps: data.fps ?? null, modelVersion: data.modelVersion ?? null });
+        const res = computeVideoTime(data, videoTimeOriginRef);
+        if (res != null) {
+          detectionBufferRef.current.push({ videoTime: res.videoTime, exact: res.exact, objects: data.objects ?? [] });
+        }
       })
       .catch(() => { /* Redis 비어있을 수 있음 */ });
 
-    // 실시간 프레임 구독 — DetectionFrame 페이로드는 fps 미포함이라 fps 는 이전 값 유지
+    // 실시간 프레임 — 버퍼에 push 만 (즉시 렌더 X)
     subscribe(`/topic/detections/${selectedCameraId}`, (frame) => {
       if (cancelled) return;
-      wsReceived = true;
-      setDetection((prev) => ({
-        cameraId: frame.cameraId,
-        frameTimestamp: frame.frameTs,
-        objects: frame.objects ?? [],
-        fps: prev?.fps ?? null,
-        modelVersion: prev?.modelVersion ?? null,
-      }));
+      const res = computeVideoTime(frame, videoTimeOriginRef);
+      if (res == null) return; // 시각 정보 없으면 매칭 불가능 → 버림
+      const buf = detectionBufferRef.current;
+      buf.push({ videoTime: res.videoTime, exact: res.exact, objects: frame.objects ?? [] });
+      // 정상적으로는 오름차순으로 도착. 도착 순서가 어긋난 경우에만 정렬.
+      if (buf.length >= 2 && buf[buf.length - 2].videoTime > res.videoTime) {
+        buf.sort((a, b) => a.videoTime - b.videoTime);
+      }
+      if (buf.length > DETECTION_BUFFER_MAX) {
+        buf.splice(0, buf.length - DETECTION_BUFFER_MAX);
+      }
     })
       .then((u) => { if (cancelled) u(); else unsub = u; })
       .catch(() => { /* 구독 실패는 폴백 정책 없음 — 추후 재시도 */ });
@@ -255,16 +293,16 @@ export default function Monitoring() {
   }, []);
 
   const liveStatus = useMemo(() => {
-    const objects = detection?.objects ?? [];
+    const objects = activeDetection?.objects ?? [];
     return {
       date: formatStatusDate(now),
       time: formatStatusTime(now),
       workerCount: objects.filter((o) => o.label === 'worker').length,
       forkliftCount: objects.filter((o) => o.label === 'forklift').length,
-      fps: detection?.fps ?? null,
+      fps: detectionMeta.fps,
       todayAlarms: todayStats?.totalAlarms ?? 0,
     };
-  }, [now, detection, todayStats]);
+  }, [now, activeDetection, detectionMeta, todayStats]);
 
   // ROI 는 API 호출 (백엔드 연동되면 그대로 동작)
   useEffect(() => {
@@ -503,7 +541,9 @@ export default function Monitoring() {
           rois={displayRois}
           drawingVertices={drawingVertices}
           onAddVertex={handleAddVertex}
-          detections={detection?.objects ?? []}
+          detections={activeDetection?.objects ?? []}
+          detectionBufferRef={detectionBufferRef}
+          onActiveDetectionChange={setActiveDetection}
           videoSrc={currentVideoUrl}
         />
         <RoiSidebar

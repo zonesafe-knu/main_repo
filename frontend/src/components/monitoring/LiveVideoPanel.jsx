@@ -5,6 +5,10 @@ import './LiveVideoPanel.css';
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
 const MAX_VERTICES = 4;
+// 백엔드가 videoTimeSec 을 보내주는 "exact" 모드일 때만 적용되는 허용 오차(초).
+// 이보다 멀면 너무 옛 detection 으로 판단해 그리지 않음 (오버레이가 영상과 어긋난 채 계속 남는 것 방지).
+// fallback 모드(frameTs 기반)에서는 영상이 buffer 보다 일정하게 앞서기 때문에 tolerance 를 적용하지 않는다.
+const EXACT_MATCH_TOLERANCE_SEC = 1.5;
 
 export default function LiveVideoPanel({
   cameraName,
@@ -12,13 +16,51 @@ export default function LiveVideoPanel({
   rois = [],
   drawingVertices = null, // null = 그리기 모드 아님, 배열 = 그리기 모드
   onAddVertex,
-  detections = [], // 실시간 탐지 객체 (명세 §7/§11 DetectionFrame.objects)
+  detections = [], // rAF 루프가 골라준 "현재 영상 시각용" 탐지 객체
+  detectionBufferRef = null, // 영상 currentTime ↔ detection 매칭용 ref 버퍼
+  onActiveDetectionChange = null, // 매칭된 detection 이 바뀔 때마다 부모에 알림
   videoSrc = null, // 카메라에 연결된 영상 URL (null 이면 영상 없음 placeholder)
 }) {
   const isDrawing = Array.isArray(drawingVertices);
   const videoAreaRef = useRef(null);
+  const videoRef = useRef(null);
   // 네이티브 Fullscreen API가 차단된 환경(iframe 등)에서 쓸 CSS 폴백 상태
   const [cssFullscreen, setCssFullscreen] = useState(false);
+
+  // 영상 currentTime ↔ detection 동기화 루프.
+  // 매 rAF tick 마다 영상의 현재 재생 위치에 맞는 detection 을 버퍼에서 골라
+  // 부모(onActiveDetectionChange)에 알린다. 같은 entry 가 재선택되면 setState 생략.
+  useEffect(() => {
+    if (!detectionBufferRef || !onActiveDetectionChange) return undefined;
+    let raf;
+    let lastEntry = null;
+    const tick = () => {
+      const video = videoRef.current;
+      const buf = detectionBufferRef.current;
+      if (video && buf && buf.length > 0) {
+        const t = video.currentTime;
+        // videoTime <= t 인 항목 중 가장 최신 (buf 는 오름차순 정렬됨)
+        let match = null;
+        for (let i = buf.length - 1; i >= 0; i--) {
+          if (buf[i].videoTime <= t) { match = buf[i]; break; }
+        }
+        // exact 모드(백엔드 videoTimeSec 제공)에서만 tolerance 가드 적용.
+        // fallback 모드에서는 buffer 가 항상 video 보다 뒤처져 있어 가드를 적용하면 영원히 매칭 안 됨.
+        if (match && match.exact && t - match.videoTime > EXACT_MATCH_TOLERANCE_SEC) {
+          match = null;
+        }
+        if (match !== lastEntry) {
+          lastEntry = match;
+          onActiveDetectionChange(
+            match ? { objects: match.objects, frameVideoTime: match.videoTime } : null
+          );
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [detectionBufferRef, onActiveDetectionChange]);
 
   const handleFullscreen = async () => {
     // 1) 네이티브 풀스크린 중이면 종료
@@ -97,6 +139,7 @@ export default function LiveVideoPanel({
         {videoSrc ? (
           <video
             key={videoSrc}
+            ref={videoRef}
             className="live-video"
             src={videoSrc}
             autoPlay

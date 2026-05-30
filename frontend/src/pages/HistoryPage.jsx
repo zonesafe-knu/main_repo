@@ -134,7 +134,12 @@ const HistoryPage = () => {
       if (cancelled || !evt?.alarmId) return;
       setAlarms((prev) => prev.map((a) =>
         a.alarmId === evt.alarmId
-          ? { ...a, status: evt.status, comment: evt.comment ?? a.comment }
+          ? {
+              ...a,
+              status: evt.status ?? a.status,
+              comment: evt.comment ?? a.comment,
+              clipId: evt.clipId ?? a.clipId,
+            }
           : a
       ));
     })

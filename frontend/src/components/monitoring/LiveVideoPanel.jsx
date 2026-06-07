@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import './LiveVideoPanel.css';
 
 // 영상 원본 해상도 — SVG 좌표계 (모든 ROI 좌표는 이 기준)
-const VIDEO_WIDTH = 1920;
-const VIDEO_HEIGHT = 1080;
+// ROI 등록 시 referenceWidth/Height로 백엔드에 함께 전송되어 detection 좌표계 매칭에 사용된다.
+export const VIDEO_WIDTH = 1920;
+export const VIDEO_HEIGHT = 1080;
 const MAX_VERTICES = 4;
 // 백엔드가 videoTimeSec 을 보내주는 "exact" 모드일 때만 적용되는 허용 오차(초).
 // 이보다 멀면 너무 옛 detection 으로 판단해 그리지 않음 (오버레이가 영상과 어긋난 채 계속 남는 것 방지).

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import './Monitoring.css';
 import Header from '../components/common/Header';
 import CameraSidebar from '../components/monitoring/CameraSidebar';
-import LiveVideoPanel from '../components/monitoring/LiveVideoPanel';
+import LiveVideoPanel, { VIDEO_WIDTH, VIDEO_HEIGHT } from '../components/monitoring/LiveVideoPanel';
 import RoiSidebar from '../components/monitoring/RoiSidebar';
 import AddCameraModal from '../components/monitoring/AddCameraModal';
 import AddRoiModal from '../components/monitoring/AddRoiModal';
@@ -497,6 +497,8 @@ export default function Monitoring() {
           alarmRule: existing?.alarmRule ?? 'WORKER_ALONE_OR_INTERACTION',
           muteForkliftOnly: existing?.muteForkliftOnly ?? true,
           dangerDistanceThreshold: existing?.dangerDistanceThreshold ?? 150,
+          referenceWidth: VIDEO_WIDTH,
+          referenceHeight: VIDEO_HEIGHT,
           active: existing?.active ?? true,
         });
         setApiRois((prev) =>
@@ -510,6 +512,8 @@ export default function Monitoring() {
           alarmRule: 'WORKER_ALONE_OR_INTERACTION',
           muteForkliftOnly: true,
           dangerDistanceThreshold: 150,
+          referenceWidth: VIDEO_WIDTH,
+          referenceHeight: VIDEO_HEIGHT,
           active: true,
         });
         setApiRois((prev) => [...prev, created]);

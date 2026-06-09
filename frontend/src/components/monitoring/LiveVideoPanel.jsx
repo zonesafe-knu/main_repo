@@ -159,6 +159,13 @@ export default function LiveVideoPanel({
             muted
             loop
             playsInline
+            onPlay={onVideoPlay ?? undefined}
+            onLoadedMetadata={(e) => {
+              setVideoNaturalSize({
+                w: e.target.videoWidth || VIDEO_WIDTH,
+                h: e.target.videoHeight || VIDEO_HEIGHT,
+              });
+            }}
           />
         ) : (
           <div className="live-video-empty">이 카메라에 연결된 영상이 없습니다.</div>
@@ -199,23 +206,33 @@ export default function LiveVideoPanel({
               </g>
             ))}
 
-            {/* 실시간 탐지 bbox 오버레이 — bbox: [x1, y1, x2, y2] (영상 좌표계) */}
-            {detections.map((obj, i) => {
-              const [x1, y1, x2, y2] = obj.bbox ?? [];
-              if ([x1, y1, x2, y2].some((v) => typeof v !== 'number')) return null;
-              const w = x2 - x1;
-              const h = y2 - y1;
-              return (
-                <g key={`${obj.trackId ?? 'd'}-${i}`} className={`detection detection-${obj.label}`}>
-                  <rect x={x1} y={y1} width={w} height={h} className="detection-bbox" />
-                  <rect x={x1} y={y1 - 36} width={Math.max(180, obj.label?.length * 18 + 80)} height={32} className="detection-label-bg" />
-                  <text x={x1 + 8} y={y1 - 12} className="detection-label">
-                    {obj.label}{obj.trackId != null ? ` #${obj.trackId}` : ''}
-                    {obj.confidence != null ? ` ${Math.round(obj.confidence * 100)}%` : ''}
-                  </text>
-                </g>
-              );
-            })}
+            {/* 실시간 탐지 bbox 오버레이 — bbox: [x1, y1, x2, y2] (영상 원본 픽셀 좌표계)
+                SVG viewBox(1920×1080) 로 스케일 변환 필요. 영상 원본 해상도가 1080p 가 아니면
+                여기서 보정하지 않으면 bbox 가 어긋남(특히 좌측으로 치우침). */}
+            {(() => {
+              const bboxScaleX = videoNaturalSize ? VIDEO_WIDTH / videoNaturalSize.w : 1;
+              const bboxScaleY = videoNaturalSize ? VIDEO_HEIGHT / videoNaturalSize.h : 1;
+              return detections.map((obj, i) => {
+                const [x1, y1, x2, y2] = obj.bbox ?? [];
+                if ([x1, y1, x2, y2].some((v) => typeof v !== 'number')) return null;
+                const X1 = x1 * bboxScaleX;
+                const Y1 = y1 * bboxScaleY;
+                const X2 = x2 * bboxScaleX;
+                const Y2 = y2 * bboxScaleY;
+                const w = X2 - X1;
+                const h = Y2 - Y1;
+                return (
+                  <g key={`${obj.trackId ?? 'd'}-${i}`} className={`detection detection-${obj.label}`}>
+                    <rect x={X1} y={Y1} width={w} height={h} className="detection-bbox" />
+                    <rect x={X1} y={Y1 - 36} width={Math.max(180, (obj.label?.length ?? 0) * 18 + 80)} height={32} className="detection-label-bg" />
+                    <text x={X1 + 8} y={Y1 - 12} className="detection-label">
+                      {obj.label}{obj.trackId != null ? ` #${obj.trackId}` : ''}
+                      {obj.confidence != null ? ` ${Math.round(obj.confidence * 100)}%` : ''}
+                    </text>
+                  </g>
+                );
+              });
+            })()}
 
             {/* 그리는 중인 다각형 미리보기 */}
             {isDrawing && drawingVertices.length > 0 && (

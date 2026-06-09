@@ -605,6 +605,8 @@ export default function Monitoring() {
           detectionBufferRef={detectionBufferRef}
           onActiveDetectionChange={setActiveDetection}
           videoSrc={currentVideoUrl}
+          videoId={currentVideoId}
+          onVideoPlay={handleVideoPlay}
         />
         <RoiSidebar
           rois={visibleRois}

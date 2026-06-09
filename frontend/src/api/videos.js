@@ -68,6 +68,14 @@ export async function deleteVideo(videoId) {
   return apiRequest(`/videos/${videoId}`, { method: 'DELETE' });
 }
 
+// ===== 사전 분석된 detection 프레임 일괄 조회 =====
+// 영상 재생 시작(onPlay) 시점에 호출 — 백엔드가 지금까지 분석한 모든 detection 프레임을 한 번에 받아 버퍼를 채운다.
+// 분석은 백엔드에서 계속 진행되므로, 재생 직전에 호출할수록 더 많은 구간 커버됨.
+// 응답: [{ videoTimeSec, objects: [{label, bbox, confidence, trackId}] }, ...]
+export async function fetchDetectionFrames(videoId) {
+  return apiRequest(`/videos/${videoId}/detection-frames`);
+}
+
 // ===== 15.8 스트리밍 / 다운로드 / 썸네일 — <video src>에 바로 꽂는 절대 URL =====
 export function getVideoStreamUrl(videoId) {
   return `${BASE_URL}/videos/${videoId}/stream`;

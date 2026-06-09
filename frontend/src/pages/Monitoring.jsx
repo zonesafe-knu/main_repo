@@ -17,7 +17,7 @@ import { fetchRois, createRoi, updateRoi, deleteRoi } from '../api/rois';
 import { fetchLatestDetection } from '../api/detections';
 import { fetchStatsSummary } from '../api/stats';
 import { subscribe } from '../api/ws';
-import { uploadVideo, fetchVideos, getVideoStreamUrl } from '../api/videos';
+import { uploadVideo, fetchVideos, getVideoStreamUrl, fetchDetectionFrames } from '../api/videos';
 
 // 카메라 목록은 백엔드에서 받아온다 (mount 시 1회). 선택한 카메라 ID 는 UX 유지 목적으로 localStorage 보관.
 const SELECTED_CAM_STORAGE_KEY = '__monitoring_selected_cam_v1';
@@ -134,8 +134,9 @@ export default function Monitoring() {
   // fps / modelVersion — 초기 REST 응답 1회로 채움 (WS DetectionFrame 에는 없음)
   const [detectionMeta, setDetectionMeta] = useState({ fps: null, modelVersion: null });
   const [todayStats, setTodayStats] = useState(null);
-  // 선택된 카메라에 연결된 최신 영상 URL (없으면 null)
+  // 선택된 카메라에 연결된 최신 영상 URL / videoId (onPlay 시 detection-frames 프리로드용)
   const [currentVideoUrl, setCurrentVideoUrl] = useState(null);
+  const [currentVideoId, setCurrentVideoId] = useState(null);
 
   // 백엔드에서 카메라 목록 로드 (mount 시 1회 + add/rename/delete 후 재호출)
   const reloadCameras = async () => {
@@ -176,6 +177,7 @@ export default function Monitoring() {
   useEffect(() => {
     if (!selectedCameraId) {
       setCurrentVideoUrl(null);
+      setCurrentVideoId(null);
       return;
     }
     let cancelled = false;
@@ -184,10 +186,68 @@ export default function Monitoring() {
         if (cancelled) return;
         const latest = page?.content?.[0];
         setCurrentVideoUrl(latest ? getVideoStreamUrl(latest.videoId) : null);
+        setCurrentVideoId(latest?.videoId ?? null);
       })
-      .catch(() => { if (!cancelled) setCurrentVideoUrl(null); });
+      .catch(() => {
+        if (cancelled) return;
+        setCurrentVideoUrl(null);
+        setCurrentVideoId(null);
+      });
     return () => { cancelled = true; };
   }, [selectedCameraId]);
+
+  // detection-frames 폴링 타이머 — videoId 잡힐 때 자동 시작 + onPlay 도 트리거 (둘 다 안전).
+  // 카메라/영상 전환 또는 언마운트 시 cleanup.
+  const pollTimerRef = useRef(null);
+  const DETECTION_POLL_MS = 500;
+
+  // 폴링 시작 헬퍼 — useEffect(videoId 잡힐 때) 와 onPlay 양쪽에서 호출.
+  // pollTimerRef 가 이미 있으면 no-op (중복 타이머 방지).
+  const startDetectionPolling = (videoId) => {
+    if (!videoId || pollTimerRef.current) return;
+    const fetchAndMergeFrames = async () => {
+      try {
+        const frames = await fetchDetectionFrames(videoId);
+        if (!Array.isArray(frames)) return;
+        const buf = detectionBufferRef.current;
+        const existing = new Set(buf.map((f) => f.videoTime));
+        let added = false;
+        for (const f of frames) {
+          if (typeof f?.videoTimeSec !== 'number') continue;
+          if (existing.has(f.videoTimeSec)) continue;
+          buf.push({
+            videoTime: f.videoTimeSec,
+            exact: true,
+            objects: f.objects ?? [],
+          });
+          existing.add(f.videoTimeSec);
+          added = true;
+        }
+        if (added) buf.sort((a, b) => a.videoTime - b.videoTime);
+      } catch {
+        /* 분석 데이터 없을 수 있음 — 다음 폴링 또는 WS 신규 프레임에 의존 */
+      }
+    };
+    fetchAndMergeFrames();
+    pollTimerRef.current = setInterval(fetchAndMergeFrames, DETECTION_POLL_MS);
+  };
+
+  // videoId 잡히는 즉시 폴링 시작 — 영상이 로딩되는 동안 buffer 미리 채워 초반 깜빡임 감소.
+  // <video> 가 autoPlay 로 시작될 때 onPlay 가 같은 함수를 다시 호출해도 위 guard 가 막아줌.
+  useEffect(() => {
+    if (currentVideoId) startDetectionPolling(currentVideoId);
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVideoId]);
+
+  // <video onPlay> 핸들러 — 위 effect 가 이미 폴링을 시작했지만, 안전 차원에서 트리거.
+  // pause→play 반복 시에도 guard 가 중복 타이머를 막음.
+  const handleVideoPlay = () => startDetectionPolling(currentVideoId);
 
   // 카메라별 status 실시간 구독 — apiCameras id 목록 변경 시(추가/삭제)에만 재구독
   const cameraIdsKey = useMemo(

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { setActiveVideo, clearActiveVideo } from '../../utils/playbackState';
 import './LiveVideoPanel.css';
 
 // 영상 원본 해상도 — SVG 좌표계 (모든 ROI 좌표는 이 기준)
@@ -20,12 +21,24 @@ export default function LiveVideoPanel({
   detectionBufferRef = null, // 영상 currentTime ↔ detection 매칭용 ref 버퍼
   onActiveDetectionChange = null, // 매칭된 detection 이 바뀔 때마다 부모에 알림
   videoSrc = null, // 카메라에 연결된 영상 URL (null 이면 영상 없음 placeholder)
+  videoId = null, // 현재 영상의 ID — AlarmToaster 가 영상 기반 알람 dispatch 에 사용
+  onVideoPlay = null, // <video> 의 play 이벤트 시 호출 — 부모가 detection-frames 폴링 시작용으로 사용
 }) {
   const isDrawing = Array.isArray(drawingVertices);
   const videoAreaRef = useRef(null);
   const videoRef = useRef(null);
   // 네이티브 Fullscreen API가 차단된 환경(iframe 등)에서 쓸 CSS 폴백 상태
   const [cssFullscreen, setCssFullscreen] = useState(false);
+  // 영상 원본 해상도 — bbox 가 영상 원본 픽셀 좌표계로 오므로, SVG viewBox(1920×1080) 로 스케일 변환 필요.
+  // metadata 로드 전에는 null → 스케일 = 1 (1080p 가정).
+  const [videoNaturalSize, setVideoNaturalSize] = useState(null);
+
+  // videoId 가 잡혀 있는 동안 전역 playbackState 에 ref 등록 — 외부 컴포넌트가 currentTime 조회 가능.
+  useEffect(() => {
+    if (!videoId) return undefined;
+    setActiveVideo(videoId, videoRef);
+    return () => clearActiveVideo();
+  }, [videoId]);
 
   // 영상 currentTime ↔ detection 동기화 루프.
   // 매 rAF tick 마다 영상의 현재 재생 위치에 맞는 detection 을 버퍼에서 골라

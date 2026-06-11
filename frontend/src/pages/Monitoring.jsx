@@ -357,8 +357,15 @@ export default function Monitoring() {
     return {
       date: formatStatusDate(now),
       time: formatStatusTime(now),
-      workerCount: objects.filter((o) => o.label === 'worker').length,
-      forkliftCount: objects.filter((o) => o.label === 'forklift').length,
+      // YOLO 모델별 label 표기 차이 흡수 (model.pt: "Person"/"Forklift(v)"/(d)/(h), best.pt: "person"/"forklift")
+      workerCount: objects.filter((o) => {
+        const l = (o.label ?? '').toLowerCase();
+        return l === 'person' || l === 'worker';
+      }).length,
+      forkliftCount: objects.filter((o) => {
+        const l = (o.label ?? '').toLowerCase();
+        return l.startsWith('forklift');
+      }).length,
       fps: detectionMeta.fps,
       todayAlarms: todayStats?.totalAlarms ?? 0,
     };

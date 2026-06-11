@@ -112,7 +112,9 @@ export default function LiveVideoPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [cssFullscreen]);
 
-  // 화면 픽셀 좌표 → 영상 좌표(viewBox 기준) 변환
+  // 화면 픽셀 좌표 → 영상 원본 해상도 좌표 변환.
+  // ROI 는 영상 원본 해상도 좌표계로 저장해야 YOLO 가 산출하는 bbox 와 같은 좌표계에서 overlap 계산 가능.
+  // (예: 1280×720 영상에서 ROI 좌표가 1920×1080 ref 로 저장되면 y>720 영역이 영상 밖에 존재 → 탐지 미스매치)
   const handleSvgClick = (e) => {
     if (!isDrawing || drawingVertices.length >= MAX_VERTICES) return;
     const svg = e.currentTarget;
@@ -122,10 +124,19 @@ export default function LiveVideoPanel({
     const ctm = svg.getScreenCTM();
     if (!ctm) return;
     const cursorPt = pt.matrixTransform(ctm.inverse());
-    onAddVertex?.([Math.round(cursorPt.x), Math.round(cursorPt.y)]);
+    // viewBox(1920×1080) → 영상 원본 해상도로 다운스케일.
+    // metadata 로드 전이면 1:1 (1080p 가정 fallback).
+    const sx = videoNaturalSize ? videoNaturalSize.w / VIDEO_WIDTH : 1;
+    const sy = videoNaturalSize ? videoNaturalSize.h / VIDEO_HEIGHT : 1;
+    onAddVertex?.([Math.round(cursorPt.x * sx), Math.round(cursorPt.y * sy)]);
   };
 
   const hasContent = rois.length > 0 || isDrawing || detections.length > 0;
+
+  // 영상 원본 해상도 → SVG viewBox(1920×1080) 스케일.
+  // ROI / drawingVertices / bbox 모두 영상 원본 좌표계로 저장·수신되므로 표시 시 동일 스케일 적용.
+  const displayScaleX = videoNaturalSize ? VIDEO_WIDTH / videoNaturalSize.w : 1;
+  const displayScaleY = videoNaturalSize ? VIDEO_HEIGHT / videoNaturalSize.h : 1;
 
   return (
     <section className="center-video-area">
@@ -178,27 +189,27 @@ export default function LiveVideoPanel({
             preserveAspectRatio="xMidYMid meet"
             onClick={handleSvgClick}
           >
-            {/* 기존 ROI 표시 */}
+            {/* 기존 ROI 표시 — 좌표는 영상 원본 해상도 기준 → viewBox 로 스케일 변환해서 그림 */}
             {rois.map((roi) => (
               <g key={roi.id} className="roi-shape">
                 <polygon
                   points={roi.coordinates
-                    .map(([x, y]) => `${x},${y}`)
+                    .map(([x, y]) => `${x * displayScaleX},${y * displayScaleY}`)
                     .join(' ')}
                   className="roi-polygon"
                 />
                 {roi.coordinates.map(([x, y], i) => (
                   <circle
                     key={i}
-                    cx={x}
-                    cy={y}
+                    cx={x * displayScaleX}
+                    cy={y * displayScaleY}
                     r="10"
                     className="roi-vertex"
                   />
                 ))}
                 <text
-                  x={roi.coordinates[0][0]}
-                  y={roi.coordinates[0][1] - 16}
+                  x={roi.coordinates[0][0] * displayScaleX}
+                  y={roi.coordinates[0][1] * displayScaleY - 16}
                   className="roi-label"
                 >
                   {roi.name}
@@ -209,38 +220,35 @@ export default function LiveVideoPanel({
             {/* 실시간 탐지 bbox 오버레이 — bbox: [x1, y1, x2, y2] (영상 원본 픽셀 좌표계)
                 SVG viewBox(1920×1080) 로 스케일 변환 필요. 영상 원본 해상도가 1080p 가 아니면
                 여기서 보정하지 않으면 bbox 가 어긋남(특히 좌측으로 치우침). */}
-            {(() => {
-              const bboxScaleX = videoNaturalSize ? VIDEO_WIDTH / videoNaturalSize.w : 1;
-              const bboxScaleY = videoNaturalSize ? VIDEO_HEIGHT / videoNaturalSize.h : 1;
-              return detections.map((obj, i) => {
-                const [x1, y1, x2, y2] = obj.bbox ?? [];
-                if ([x1, y1, x2, y2].some((v) => typeof v !== 'number')) return null;
-                const X1 = x1 * bboxScaleX;
-                const Y1 = y1 * bboxScaleY;
-                const X2 = x2 * bboxScaleX;
-                const Y2 = y2 * bboxScaleY;
-                const w = X2 - X1;
-                const h = Y2 - Y1;
-                return (
-                  <g key={`${obj.trackId ?? 'd'}-${i}`} className={`detection detection-${obj.label}`}>
-                    <rect x={X1} y={Y1} width={w} height={h} className="detection-bbox" />
-                    <rect x={X1} y={Y1 - 36} width={Math.max(180, (obj.label?.length ?? 0) * 18 + 80)} height={32} className="detection-label-bg" />
-                    <text x={X1 + 8} y={Y1 - 12} className="detection-label">
-                      {obj.label}{obj.trackId != null ? ` #${obj.trackId}` : ''}
-                      {obj.confidence != null ? ` ${Math.round(obj.confidence * 100)}%` : ''}
-                    </text>
-                  </g>
-                );
-              });
-            })()}
+            {detections.map((obj, i) => {
+              const [x1, y1, x2, y2] = obj.bbox ?? [];
+              if ([x1, y1, x2, y2].some((v) => typeof v !== 'number')) return null;
+              const X1 = x1 * displayScaleX;
+              const Y1 = y1 * displayScaleY;
+              const X2 = x2 * displayScaleX;
+              const Y2 = y2 * displayScaleY;
+              const w = X2 - X1;
+              const h = Y2 - Y1;
+              return (
+                <g key={`${obj.trackId ?? 'd'}-${i}`} className={`detection detection-${obj.label}`}>
+                  <rect x={X1} y={Y1} width={w} height={h} className="detection-bbox" />
+                  <rect x={X1} y={Y1 - 36} width={Math.max(180, (obj.label?.length ?? 0) * 18 + 80)} height={32} className="detection-label-bg" />
+                  <text x={X1 + 8} y={Y1 - 12} className="detection-label">
+                    {obj.label}{obj.trackId != null ? ` #${obj.trackId}` : ''}
+                    {obj.confidence != null ? ` ${Math.round(obj.confidence * 100)}%` : ''}
+                  </text>
+                </g>
+              );
+            })}
 
             {/* 그리는 중인 다각형 미리보기 */}
             {isDrawing && drawingVertices.length > 0 && (
+              /* 그리는 중인 꼭짓점 — 영상 원본 해상도 좌표계 → viewBox 로 스케일 변환 */
               <g className="roi-drawing">
                 {drawingVertices.length === MAX_VERTICES ? (
                   <polygon
                     points={drawingVertices
-                      .map(([x, y]) => `${x},${y}`)
+                      .map(([x, y]) => `${x * displayScaleX},${y * displayScaleY}`)
                       .join(' ')}
                     className="roi-drawing-polygon"
                   />
@@ -248,7 +256,7 @@ export default function LiveVideoPanel({
                   drawingVertices.length >= 2 && (
                     <polyline
                       points={drawingVertices
-                        .map(([x, y]) => `${x},${y}`)
+                        .map(([x, y]) => `${x * displayScaleX},${y * displayScaleY}`)
                         .join(' ')}
                       className="roi-drawing-line"
                     />
@@ -257,8 +265,8 @@ export default function LiveVideoPanel({
                 {drawingVertices.map(([x, y], i) => (
                   <circle
                     key={i}
-                    cx={x}
-                    cy={y}
+                    cx={x * displayScaleX}
+                    cy={y * displayScaleY}
                     r="14"
                     className="roi-drawing-vertex"
                   />

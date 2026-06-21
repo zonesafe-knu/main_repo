@@ -1,0 +1,166 @@
+.alarm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.alarm-modal {
+  background: #fff;
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.alarm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1px solid #eee;
+}
+
+.alarm-modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.alarm-modal-id {
+  color: #999;
+  font-weight: 400;
+  margin-left: 6px;
+  font-size: 0.9rem;
+}
+
+.alarm-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #888;
+  line-height: 1;
+  padding: 0 4px;
+}
+.alarm-modal-close:hover { color: #333; }
+
+.alarm-modal-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.alarm-modal-state {
+  text-align: center;
+  padding: 30px 0;
+  color: #888;
+}
+.alarm-modal-state.error { color: #c62828; }
+
+.alarm-modal-snapshot {
+  margin-bottom: 16px;
+  text-align: center;
+}
+.alarm-modal-snapshot img {
+  max-width: 100%;
+  max-height: 280px;
+  border-radius: 4px;
+}
+
+.alarm-modal-meta {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  row-gap: 8px;
+  column-gap: 14px;
+  margin: 0 0 20px 0;
+  font-size: 0.9rem;
+}
+.alarm-modal-meta dt {
+  color: #888;
+  font-weight: 500;
+}
+.alarm-modal-meta dd {
+  margin: 0;
+  color: #333;
+}
+.alarm-modal-meta .muted {
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.severity-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.severity-info    { background: #e3f2fd; color: #1565c0; }
+.severity-warn    { background: #fff3e0; color: #ef6c00; }
+.severity-danger  { background: #ffebee; color: #c62828; }
+
+.alarm-modal-detections h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+}
+.alarm-modal-detections table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.alarm-modal-detections th,
+.alarm-modal-detections td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: left;
+}
+.alarm-modal-detections th {
+  color: #888;
+  font-weight: 500;
+  background: #fafafa;
+}
+.alarm-modal-detections .muted {
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.alarm-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid #eee;
+}
+
+.modal-btn {
+  padding: 7px 16px;
+  border: 1px solid #d0d0d0;
+  background: #fff;
+  color: #333;
+  border-radius: 3px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.modal-btn:hover:not(:disabled) { background: #f5f5f5; }
+.modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modal-btn.primary {
+  background: #8C6A3E;
+  color: #fff;
+  border-color: #8C6A3E;
+}
+.modal-btn.primary:hover:not(:disabled) { background: #745430; }
+
+.modal-btn.ghost {
+  border-color: transparent;
+  color: #777;
+}

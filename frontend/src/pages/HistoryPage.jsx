@@ -4,13 +4,15 @@ import { ko } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
 import './HistoryPage.css';
 import Header from '../components/common/Header';
-import { fetchAlarms, ackAlarm, resolveAlarm, bulkAckAlarms } from '../api/alarms';
+import AlarmDetailModal from '../components/history/AlarmDetailModal';
+import { fetchAlarms, resolveAlarm, bulkAckAlarms } from '../api/alarms';
 import { fetchCameras } from '../api/cameras';
+import { getClipStreamUrl } from '../api/clips';
+import { subscribe, publish } from '../api/ws';
 
 registerLocale('ko', ko);
 
 const PAGE_SIZE = 20;
-const SAMPLE_VIDEO = '/videos/sample.mp4';
 
 const SEVERITY_BADGE_CLASS = { INFO: 'info', WARN: 'warning', DANGER: 'danger' };
 const SEVERITY_LABEL = { INFO: 'Info', WARN: 'Warning', DANGER: 'Danger' };
@@ -78,9 +80,11 @@ const HistoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [isLive, setIsLive] = useState(false);
 
   // ===== 재생기 / 선택 상태 =====
   const [selectedAlarmId, setSelectedAlarmId] = useState(null);
+  const [detailAlarmId, setDetailAlarmId] = useState(null);
   const [checkedIds, setCheckedIds] = useState(() => new Set());
   const [actionPendingId, setActionPendingId] = useState(null);
   const [bulkPending, setBulkPending] = useState(false);
@@ -97,10 +101,54 @@ const HistoryPage = () => {
   // ===== 카메라 목록 (마운트 시 1회) =====
   useEffect(() => {
     let cancelled = false;
-    fetchCameras({ status: 'ONLINE' })
+    fetchCameras()
       .then((list) => { if (!cancelled) setCameras(list); })
       .catch(() => {});
     return () => { cancelled = true; };
+  }, []);
+
+  // ===== STOMP /topic/alarms 실시간 구독 — 새 알람 도착 시 목록 자동 갱신 =====
+  useEffect(() => {
+    let unsub = null;
+    let cancelled = false;
+    subscribe('/topic/alarms', () => {
+      if (!cancelled) setRefreshTick((t) => t + 1);
+    })
+      .then((u) => {
+        if (cancelled) u();
+        else { unsub = u; setIsLive(true); }
+      })
+      .catch(() => { if (!cancelled) setIsLive(false); });
+    return () => {
+      cancelled = true;
+      setIsLive(false);
+      if (unsub) unsub();
+    };
+  }, []);
+
+  // ===== STOMP /topic/alarms/status 구독 — ACK/Resolve/Bulk-ACK 의 상태 변경을 다른 세션과 동기화 =====
+  useEffect(() => {
+    let unsub = null;
+    let cancelled = false;
+    subscribe('/topic/alarms/status', (evt) => {
+      if (cancelled || !evt?.alarmId) return;
+      setAlarms((prev) => prev.map((a) =>
+        a.alarmId === evt.alarmId
+          ? {
+              ...a,
+              status: evt.status ?? a.status,
+              comment: evt.comment ?? a.comment,
+              clipId: evt.clipId ?? a.clipId,
+            }
+          : a
+      ));
+    })
+      .then((u) => { if (cancelled) u(); else unsub = u; })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, []);
 
   // ===== 필터 변경 시 첫 페이지로 + 선택 초기화 =====
@@ -227,14 +275,13 @@ const HistoryPage = () => {
   // ===== 액션 핸들러 =====
   const triggerRefresh = () => setRefreshTick((t) => t + 1);
 
-  const handleAck = async (alarmId) => {
-    setActionPendingId(alarmId);
-    try {
-      await ackAlarm(alarmId);
-      triggerRefresh();
-    } finally {
-      setActionPendingId(null);
-    }
+  // STOMP /app/ack 로 fire-and-forget — 백엔드가 받은 후 /topic/alarms/status 로 broadcast 하므로
+  // 다른 클라이언트도 자동 동기화. 로컬은 optimistic 으로 즉시 갱신.
+  const handleAck = (alarmId) => {
+    publish('/app/ack', { alarmId });
+    setAlarms((prev) => prev.map((a) =>
+      a.alarmId === alarmId ? { ...a, status: 'ACK' } : a
+    ));
   };
 
   const handleResolve = async (alarmId) => {
@@ -291,7 +338,7 @@ const HistoryPage = () => {
     });
   };
 
-  const videoSrc = selectedAlarm ? SAMPLE_VIDEO : '';
+  const videoSrc = selectedAlarm?.clipId ? getClipStreamUrl(selectedAlarm.clipId) : '';
   const progressPercent = clipDuration > 0 ? (clipTime / clipDuration) * 100 : 0;
   const totalPages = pageInfo.totalPages;
   const visiblePages = useMemo(() => {
@@ -403,6 +450,11 @@ const HistoryPage = () => {
                     <button
                       type="button"
                       className="action-btn"
+                      onClick={() => setDetailAlarmId(selectedAlarm.alarmId)}
+                    >상세</button>
+                    <button
+                      type="button"
+                      className="action-btn"
                       onClick={() => handleAck(selectedAlarm.alarmId)}
                       disabled={
                         selectedAlarm.status !== 'NEW' ||
@@ -421,46 +473,52 @@ const HistoryPage = () => {
                   </div>
                 </div>
 
-                <div className="video-screen" onClick={togglePlay}>
-                  <video
-                    ref={videoRef}
-                    src={videoSrc}
-                    className="video-player"
-                    preload="auto"
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => setIsPlaying(false)}
-                  />
-                  <button
-                    type="button"
-                    className={`video-overlay-btn ${isPlaying ? 'playing' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-                    aria-label={isPlaying ? '일시정지' : '재생'}
-                  >
-                    {isPlaying ? (
-                      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                    )}
-                  </button>
-                </div>
+                {selectedAlarm.clipId ? (
+                  <>
+                    <div className="video-screen" onClick={togglePlay}>
+                      <video
+                        ref={videoRef}
+                        src={videoSrc}
+                        className="video-player"
+                        preload="auto"
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onEnded={() => setIsPlaying(false)}
+                      />
+                      <button
+                        type="button"
+                        className={`video-overlay-btn ${isPlaying ? 'playing' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                        aria-label={isPlaying ? '일시정지' : '재생'}
+                      >
+                        {isPlaying ? (
+                          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        )}
+                      </button>
+                    </div>
 
-                <div className="video-controls">
-                  <div className="progress-bar" onClick={handleSeek}>
-                    <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
-                  </div>
-                  <div className="time-labels">
-                    <span>{formatClipTime(clipTime)}</span>
-                    <span>{formatClipTime(clipDuration)}</span>
-                  </div>
-                  <div className="play-btn-wrapper">
-                    <button className="play-btn" onClick={togglePlay}>
-                      {isPlaying ? '❚❚ 일시정지' : '▶ 재생'}
-                    </button>
-                  </div>
-                </div>
+                    <div className="video-controls">
+                      <div className="progress-bar" onClick={handleSeek}>
+                        <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
+                      </div>
+                      <div className="time-labels">
+                        <span>{formatClipTime(clipTime)}</span>
+                        <span>{formatClipTime(clipDuration)}</span>
+                      </div>
+                      <div className="play-btn-wrapper">
+                        <button className="play-btn" onClick={togglePlay}>
+                          {isPlaying ? '❚❚ 일시정지' : '▶ 재생'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="playback-empty">이 알람에는 저장된 클립이 없습니다.</div>
+                )}
               </>
             ) : (
               <div className="playback-empty">선택된 알람이 없습니다.</div>
@@ -470,7 +528,10 @@ const HistoryPage = () => {
           {/* 우측: 알람 목록 테이블 */}
           <div className="alarm-list-panel">
             <div className="alarm-list-header">
-              <h4>알람 목록</h4>
+              <div className="alarm-list-header-left">
+                <h4>알람 목록</h4>
+                {isLive && <span className="live-badge" title="실시간 알람 수신 중">● LIVE</span>}
+              </div>
               <div className="alarm-list-header-right">
                 {checkedIds.size > 0 && (
                   <button
@@ -560,6 +621,11 @@ const HistoryPage = () => {
                             <button
                               type="button"
                               className="row-action-btn"
+                              onClick={() => setDetailAlarmId(alarm.alarmId)}
+                            >상세</button>
+                            <button
+                              type="button"
+                              className="row-action-btn"
                               onClick={() => handleAck(alarm.alarmId)}
                               disabled={alarm.status !== 'NEW' || pending}
                             >확인</button>
@@ -601,6 +667,14 @@ const HistoryPage = () => {
 
         </div>
       </div>
+
+      {detailAlarmId != null && (
+        <AlarmDetailModal
+          alarmId={detailAlarmId}
+          onClose={() => setDetailAlarmId(null)}
+          onActionDone={triggerRefresh}
+        />
+      )}
     </div>
   );
 };

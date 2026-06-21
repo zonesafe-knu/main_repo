@@ -1,41 +1,29 @@
-// 카메라 API (명세 §3 기반 mock).
-// 백엔드 연동 시 fetchCameras 본문을 다음으로 교체:
-//   return apiRequest('/cameras', { query: { siteId, status } });
+// 카메라 API (명세 §3). 백엔드 /api/v1/cameras 호출.
 
-const MOCK_CAMERAS = [
-  {
-    cameraId: 1, name: '1번 라인 입구', rtspUrl: 'rtsp://192.168.0.10/stream1',
-    siteId: 1, siteName: '대구공장 A동',
-    resolution: '1920x1080', fps: 30, status: 'ONLINE',
-    lastHeartbeat: '2026-04-28T14:29:55Z',
-  },
-  {
-    cameraId: 2, name: '2번 적재구역', rtspUrl: 'rtsp://192.168.0.11/stream1',
-    siteId: 1, siteName: '대구공장 A동',
-    resolution: '1920x1080', fps: 30, status: 'ONLINE',
-    lastHeartbeat: '2026-04-28T14:29:50Z',
-  },
-  {
-    cameraId: 3, name: '3번 출하장', rtspUrl: 'rtsp://192.168.0.12/stream1',
-    siteId: 1, siteName: '대구공장 A동',
-    resolution: '1920x1080', fps: 30, status: 'ONLINE',
-    lastHeartbeat: '2026-04-28T14:29:40Z',
-  },
-  {
-    cameraId: 4, name: 'B동 입구', rtspUrl: 'rtsp://192.168.0.20/stream1',
-    siteId: 1, siteName: '대구공장 B동',
-    resolution: '1920x1080', fps: 30, status: 'ONLINE',
-    lastHeartbeat: '2026-04-28T14:29:30Z',
-  },
-];
-
-const MOCK_LATENCY_MS = 250;
+import { apiRequest } from './client';
 
 export async function fetchCameras({ siteId, status } = {}) {
-  await new Promise((r) => setTimeout(r, MOCK_LATENCY_MS));
-  return MOCK_CAMERAS.filter(
-    (c) =>
-      (siteId === undefined || c.siteId === siteId) &&
-      (status === undefined || c.status === status)
-  );
+  return apiRequest('/cameras', { query: { siteId, status } });
+}
+
+// 명세 §3.3 — name, rtspUrl, siteId, siteName 은 백엔드 NOT NULL. 호출부에서 채워서 넘긴다.
+export async function createCamera(payload) {
+  return apiRequest('/cameras', { method: 'POST', body: payload });
+}
+
+// 명세 §3.4 — PUT 은 전체 필드 덮어쓰기. 호출부에서 기존 값과 변경분을 합쳐 통째로 전달해야 함.
+export async function updateCamera(cameraId, payload) {
+  return apiRequest(`/cameras/${cameraId}`, { method: 'PUT', body: payload });
+}
+
+export async function deleteCamera(cameraId) {
+  return apiRequest(`/cameras/${cameraId}`, { method: 'DELETE' });
+}
+
+// 데모용 — 백엔드 internal API 직접 호출 (운영에서는 헬스체커가 자동 갱신)
+export async function setCameraStatus(cameraId, status) {
+  return apiRequest(`/internal/cameras/${cameraId}/status`, {
+    method: 'PATCH',
+    body: { status },
+  });
 }
